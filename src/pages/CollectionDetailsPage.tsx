@@ -5,7 +5,8 @@ import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import type { Collection, CollectionItem, Gem, CollectionVisibility } from '@/types/database';
-import { ArrowLeft, Lock, Globe, Users, Trash2, MapPin, Plus, Search, X, Edit3, Save } from 'lucide-react';
+import { ArrowLeft, Lock, Globe, Users, Trash2, MapPin, Plus, Search, X, Edit3, Save, Flag } from 'lucide-react';
+import ReportModal from '@/components/ReportModal';
 
 export default function CollectionDetailsPage() {
   const route = useRoute();
@@ -28,6 +29,7 @@ export default function CollectionDetailsPage() {
   const [editDesc, setEditDesc] = useState('');
   const [editVis, setEditVis] = useState<CollectionVisibility>('private');
   const [formError, setFormError] = useState<string | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   const load = useCallback(async () => {
     if (!collectionId || !profile) return;
@@ -201,6 +203,11 @@ export default function CollectionDetailsPage() {
               <button onClick={handleDelete} className="btn-danger ml-auto"><Trash2 className="h-4 w-4" /> Delete</button>
             </div>
           )}
+          {!isOwner && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button onClick={() => setShowReport(true)} className="btn-outline"><Flag className="h-4 w-4" /> Report</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -270,6 +277,15 @@ export default function CollectionDetailsPage() {
           </div>
         )}
       </div>
+      {showReport && collection && (
+        <ReportModal
+          targetType="collection"
+          targetId={collection.id}
+          communityId={null}
+          onClose={() => setShowReport(false)}
+          onSubmitted={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }

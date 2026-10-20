@@ -4,11 +4,14 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { LoadingSpinner } from '@/components/States';
-import { ArrowLeft, Check, Shield, Eye, Users, MessageSquare, Ban } from 'lucide-react';
+import {
+  ArrowLeft, Check, Shield, Eye, Users, MessageSquare, Ban,
+  Bell, KeyRound, LogOut, AlertTriangle, Lock
+} from 'lucide-react';
 import type { ProfileVisibility } from '@/types/database';
 
 export default function PrivacySettingsPage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>('public');
   const [showArea, setShowArea] = useState(true);
@@ -16,6 +19,11 @@ export default function PrivacySettingsPage() {
   const [showFollowers, setShowFollowers] = useState(true);
   const [allowFollowers, setAllowFollowers] = useState(true);
   const [allowComments, setAllowComments] = useState(true);
+  const [notifyComments, setNotifyComments] = useState(true);
+  const [notifyReactions, setNotifyReactions] = useState(true);
+  const [notifyFollows, setNotifyFollows] = useState(true);
+  const [notifyCollections, setNotifyCollections] = useState(true);
+  const [notifyCorrections, setNotifyCorrections] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -29,6 +37,11 @@ export default function PrivacySettingsPage() {
       setShowFollowers(profile.show_followers);
       setAllowFollowers(profile.allow_followers);
       setAllowComments(profile.allow_comments);
+      setNotifyComments(profile.notify_comments);
+      setNotifyReactions(profile.notify_reactions);
+      setNotifyFollows(profile.notify_follows);
+      setNotifyCollections(profile.notify_collections);
+      setNotifyCorrections(profile.notify_corrections);
     }
   }, [profile]);
 
@@ -48,6 +61,11 @@ export default function PrivacySettingsPage() {
         show_followers: showFollowers,
         allow_followers: allowFollowers,
         allow_comments: allowComments,
+        notify_comments: notifyComments,
+        notify_reactions: notifyReactions,
+        notify_follows: notifyFollows,
+        notify_collections: notifyCollections,
+        notify_corrections: notifyCorrections,
       })
       .eq('id', profile.id);
     setLoading(false);
@@ -64,12 +82,18 @@ export default function PrivacySettingsPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  const handleSignOutAll = async () => {
+    if (!confirm('This will sign you out of all devices. Continue?')) return;
+    await supabase.auth.signOut({ scope: 'global' });
+    await signOut();
+  };
+
   if (!profile) return null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <button onClick={() => navigate('/profile')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><ArrowLeft className="h-4 w-4" /> Profile</button>
-      <PageHeader title="Privacy settings" subtitle="Control who sees your information and how people interact with you." />
+      <PageHeader title="Settings" subtitle="Control your privacy, notifications, and account." />
 
       <form onSubmit={onSubmit} className="card divide-y divide-stone-200 dark:divide-stone-800" noValidate>
         <Section icon={<Shield className="h-5 w-5" />} title="Profile visibility">
@@ -94,6 +118,14 @@ export default function PrivacySettingsPage() {
           <ToggleRow label="Allow comments on my recommendations" checked={allowComments} onChange={(v) => { setAllowComments(v); markDirty(); }} />
         </Section>
 
+        <Section icon={<Bell className="h-5 w-5" />} title="Notification preferences">
+          <ToggleRow label="Comments and replies" checked={notifyComments} onChange={(v) => { setNotifyComments(v); markDirty(); }} />
+          <ToggleRow label="Reactions" checked={notifyReactions} onChange={(v) => { setNotifyReactions(v); markDirty(); }} />
+          <ToggleRow label="New followers" checked={notifyFollows} onChange={(v) => { setNotifyFollows(v); markDirty(); }} />
+          <ToggleRow label="Collection additions" checked={notifyCollections} onChange={(v) => { setNotifyCollections(v); markDirty(); }} />
+          <ToggleRow label="Correction updates" checked={notifyCorrections} onChange={(v) => { setNotifyCorrections(v); markDirty(); }} />
+        </Section>
+
         <Section icon={<Ban className="h-5 w-5" />} title="Blocked users">
           <p className="text-sm text-stone-500 dark:text-stone-400">Manage people you've blocked.</p>
           <button type="button" onClick={() => navigate('/settings/blocked')} className="mt-2 btn-outline text-sm">View blocked users</button>
@@ -108,6 +140,41 @@ export default function PrivacySettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* Account section */}
+      <div className="card divide-y divide-stone-200 dark:divide-stone-800">
+        <Section icon={<KeyRound className="h-5 w-5" />} title="Password">
+          <button onClick={() => navigate('/settings/password')} className="btn-outline text-sm">
+            <Lock className="h-4 w-4" /> Change password
+          </button>
+        </Section>
+
+        <Section icon={<LogOut className="h-5 w-5" />} title="Sessions">
+          <p className="mb-2 text-sm text-stone-500 dark:text-stone-400">Sign out of your current session or all devices.</p>
+          <div className="flex gap-2">
+            <button onClick={() => signOut()} className="btn-outline text-sm">Sign out</button>
+            <button onClick={handleSignOutAll} className="btn-outline text-sm text-error-600 dark:text-error-400">Sign out all devices</button>
+          </div>
+        </Section>
+
+        <Section icon={<AlertTriangle className="h-5 w-5" />} title="Delete account">
+          <p className="text-sm text-stone-500 dark:text-stone-400">Permanently delete your account, anonymize your public contributions, and remove private data. This cannot be undone.</p>
+          <button onClick={() => navigate('/settings/delete-account')} className="mt-2 btn-danger text-sm">
+            <AlertTriangle className="h-4 w-4" /> Delete my account
+          </button>
+        </Section>
+      </div>
+
+      {/* Footer links */}
+      <div className="flex flex-wrap gap-x-4 gap-y-2 pb-4 text-xs text-stone-400">
+        <button onClick={() => navigate('/privacy')} className="hover:text-stone-600 dark:hover:text-stone-300">Privacy Overview</button>
+        <button onClick={() => navigate('/terms')} className="hover:text-stone-600 dark:hover:text-stone-300">Terms of Use</button>
+        <button onClick={() => navigate('/guidelines')} className="hover:text-stone-600 dark:hover:text-stone-300">Community Guidelines</button>
+        <button onClick={() => navigate('/accuracy')} className="hover:text-stone-600 dark:hover:text-stone-300">Accuracy Disclaimer</button>
+        <button onClick={() => navigate('/content-guidelines')} className="hover:text-stone-600 dark:hover:text-stone-300">Content Guidelines</button>
+        <button onClick={() => navigate('/deletion-info')} className="hover:text-stone-600 dark:hover:text-stone-300">Account Deletion</button>
+        <button onClick={() => navigate('/support')} className="hover:text-stone-600 dark:hover:text-stone-300">Contact &amp; Support</button>
+      </div>
     </div>
   );
 }

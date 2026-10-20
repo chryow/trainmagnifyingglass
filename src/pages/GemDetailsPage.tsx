@@ -51,6 +51,7 @@ export default function GemDetailsPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [showReport, setShowReport] = useState(false);
+  const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!gemId || !profile) return;
@@ -510,6 +511,7 @@ export default function GemDetailsPage() {
                 currentUserId={profile?.id ?? ''}
                 onNavigate={(path) => navigate(path)}
                 onDelete={handleDeleteComment}
+                onReport={(id) => setReportCommentId(id)}
                 onReply={handleSubmitReply}
                 replyingTo={replyingTo}
                 setReplyingTo={setReplyingTo}
@@ -548,6 +550,16 @@ export default function GemDetailsPage() {
           onSubmitted={() => setShowReport(false)}
         />
       )}
+
+      {reportCommentId && gem && (
+        <ReportModal
+          targetType="comment"
+          targetId={reportCommentId}
+          communityId={gem.community_id}
+          onClose={() => setReportCommentId(null)}
+          onSubmitted={() => setReportCommentId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -561,6 +573,7 @@ interface CommentItemProps {
   currentUserId: string;
   onNavigate: (path: string) => void;
   onDelete: (id: string) => void;
+  onReport: (id: string) => void;
   onReply: (parentId: string) => void;
   replyingTo: string | null;
   setReplyingTo: (id: string | null) => void;
@@ -572,7 +585,7 @@ interface CommentItemProps {
 }
 
 function CommentItem({
-  comment, currentUserId, onNavigate, onDelete, onReply,
+  comment, currentUserId, onNavigate, onDelete, onReport, onReply,
   replyingTo, setReplyingTo, replyBody, setReplyBody,
   expanded, onToggleExpand, submitting,
 }: CommentItemProps) {
@@ -601,12 +614,19 @@ function CommentItem({
               >
                 <Reply className="h-3.5 w-3.5" /> Reply
               </button>
-              {isMine && (
+              {isMine ? (
                 <button
                   onClick={() => onDelete(comment.id)}
                   className="flex items-center gap-1 text-xs text-error-500 hover:text-error-700 dark:text-error-400"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              ) : (
+                <button
+                  onClick={() => onReport(comment.id)}
+                  className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:text-stone-400"
+                >
+                  <Flag className="h-3.5 w-3.5" /> Report
                 </button>
               )}
             </div>
@@ -659,12 +679,19 @@ function CommentItem({
                         <span className="text-xs text-stone-400">{new Date(reply.created_at).toLocaleDateString()}</span>
                       </div>
                       <p className="mt-1 whitespace-pre-line text-sm text-stone-700 dark:text-stone-300">{reply.body}</p>
-                      {reply.author_id === currentUserId && (
+                      {reply.author_id === currentUserId ? (
                         <button
                           onClick={() => onDelete(reply.id)}
                           className="mt-1.5 flex items-center gap-1 text-xs text-error-500 hover:text-error-700 dark:text-error-400"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onReport(reply.id)}
+                          className="mt-1.5 flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:text-stone-400"
+                        >
+                          <Flag className="h-3.5 w-3.5" /> Report
                         </button>
                       )}
                     </div>

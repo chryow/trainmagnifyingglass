@@ -18,7 +18,14 @@ export interface Profile {
   show_followers: boolean;
   allow_followers: boolean;
   allow_comments: boolean;
+  notify_comments: boolean;
+  notify_reactions: boolean;
+  notify_follows: boolean;
+  notify_collections: boolean;
+  notify_corrections: boolean;
   onboarding_completed: boolean;
+  is_active: boolean;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
