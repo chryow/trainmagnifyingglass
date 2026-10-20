@@ -7,7 +7,7 @@ import { Avatar } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import type { AppNotification, NotificationType } from '@/types/database';
 import {
-  Bell, Heart, MessageCircle, UserPlus, Bookmark, Layers, Check
+  Bell, Heart, MessageCircle, UserPlus, Bookmark, Layers, Check, X, AlertCircle
 } from 'lucide-react';
 
 export default function NotificationsPage() {
@@ -17,6 +17,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [unavailableId, setUnavailableId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -73,22 +74,48 @@ export default function NotificationsPage() {
     handleNavigate(n);
   };
 
+  const handleDismiss = async (n: AppNotification) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', n.id);
+    setNotifications((prev) => prev.filter((item) => item.id !== n.id));
+  };
+
   const handleNavigate = async (n: AppNotification) => {
     if (n.type === 'follow' && n.actor) {
       const { data: prof } = await supabase.from('profiles').select('id').eq('id', n.actor.id).maybeSingle();
-      if (!prof) { setError(true); return; }
+      if (!prof) {
+        setUnavailableId(n.id);
+        setTimeout(() => setUnavailableId(null), 3000);
+        return;
+      }
       navigate(`/profile/${n.actor.id}`);
     } else if (n.type === 'comment' || n.type === 'gem_reaction' || n.type === 'reply' ||
       n.type === 'correction_accepted' || n.type === 'correction_rejected' ||
-      n.type === 'correction_needs_info' || n.type === 'correction_escalated') {
-      if (!n.entity_id) return;
+      n.type === 'correction_needs_info' || n.type === 'correction_escalated' ||
+      n.type === 'comment_reaction') {
+      if (!n.entity_id) {
+        setUnavailableId(n.id);
+        setTimeout(() => setUnavailableId(null), 3000);
+        return;
+      }
       const { data: gem } = await supabase.from('gems').select('id').eq('id', n.entity_id).maybeSingle();
-      if (!gem) return;
+      if (!gem) {
+        setUnavailableId(n.id);
+        setTimeout(() => setUnavailableId(null), 3000);
+        return;
+      }
       navigate(`/gems/${n.entity_id}`);
     } else if (n.type === 'collection_add') {
-      if (!n.entity_id) return;
+      if (!n.entity_id) {
+        setUnavailableId(n.id);
+        setTimeout(() => setUnavailableId(null), 3000);
+        return;
+      }
       const { data: coll } = await supabase.from('collections').select('id').eq('id', n.entity_id).maybeSingle();
-      if (!coll) return;
+      if (!coll) {
+        setUnavailableId(n.id);
+        setTimeout(() => setUnavailableId(null), 3000);
+        return;
+      }
       navigate(`/collections/${n.entity_id}`);
     }
   };
@@ -109,27 +136,42 @@ export default function NotificationsPage() {
         action={unreadCount > 0 ? <button onClick={handleMarkAllRead} disabled={markingAll} className="btn-outline text-sm">{markingAll ? <LoadingSpinner size={16} /> : <><Check className="h-4 w-4" /> Mark all read</>}</button> : undefined}
       />
 
+      {unavailableId && (
+        <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          This item is no longer available.
+        </div>
+      )}
+
       {notifications.length === 0 ? (
         <EmptyState icon={<Bell className="h-6 w-6" />} title="No notifications yet" description="You'll be notified when someone comments on your gems, reacts, or follows you." />
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => (
-            <button
+            <div
               key={n.id}
-              onClick={() => handleMarkRead(n)}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors hover:bg-stone-50 dark:hover:bg-stone-800 ${n.read ? 'border-stone-200 dark:border-stone-800' : 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/20'}`}
+              className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-stone-50 dark:hover:bg-stone-800 ${n.read ? 'border-stone-200 dark:border-stone-800' : 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/20'}`}
             >
-              <NotificationIcon type={n.type} />
-              {n.actor && <Avatar url={n.actor.avatar_url ?? null} name={n.actor.display_name} size={36} />}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm">
-                  <span className="font-medium">{n.actor?.display_name ?? 'Someone'}</span>{' '}
-                  <span className="text-stone-500 dark:text-stone-400">{notificationText(n.type)}</span>
-                </p>
-                <p className="mt-0.5 text-xs text-stone-400">{timeAgo(n.created_at)}</p>
-              </div>
-              {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary-500" />}
-            </button>
+              <button onClick={() => handleMarkRead(n)} className="flex flex-1 items-center gap-3 text-left">
+                <NotificationIcon type={n.type} />
+                {n.actor && <Avatar url={n.actor.avatar_url ?? null} name={n.actor.display_name} size={36} />}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm">
+                    <span className="font-medium">{n.actor?.display_name ?? 'Someone'}</span>{' '}
+                    <span className="text-stone-500 dark:text-stone-400">{notificationText(n.type)}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-stone-400">{timeAgo(n.created_at)}</p>
+                </div>
+                {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary-500" />}
+              </button>
+              <button
+                onClick={() => handleDismiss(n)}
+                className="shrink-0 rounded-lg p-1.5 text-stone-300 opacity-0 transition-opacity hover:bg-stone-100 hover:text-stone-500 group-hover:opacity-100 dark:hover:bg-stone-700"
+                title="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           ))}
         </div>
       )}
