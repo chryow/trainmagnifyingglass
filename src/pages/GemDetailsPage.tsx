@@ -60,7 +60,7 @@ export default function GemDetailsPage() {
     try {
       const { data, error: gErr } = await supabase
         .from('gems')
-        .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
+        .select('*, author:profiles(id, username, display_name, avatar_url, allow_comments), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
         .eq('id', gemId)
         .maybeSingle();
       if (gErr || !data) { setError(true); return; }
@@ -486,18 +486,24 @@ export default function GemDetailsPage() {
         </h2>
 
         {/* New comment */}
-        <div className="mb-5 space-y-2">
-          <textarea
-            className="input min-h-[60px] resize-y"
-            placeholder="Share your thoughts…"
-            value={commentBody}
-            onChange={(e) => setCommentBody(e.target.value)}
-            maxLength={1000}
-          />
-          <button onClick={handleSubmitComment} disabled={submittingComment || !commentBody.trim()} className="btn-primary text-sm">
-            {submittingComment ? <LoadingSpinner size={16} /> : <><Send className="h-4 w-4" /> Post comment</>}
-          </button>
-        </div>
+        {isAuthor || gem.author?.allow_comments !== false ? (
+          <div className="mb-5 space-y-2">
+            <textarea
+              className="input min-h-[60px] resize-y"
+              placeholder="Share your thoughts…"
+              value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)}
+              maxLength={1000}
+            />
+            <button onClick={handleSubmitComment} disabled={submittingComment || !commentBody.trim()} className="btn-primary text-sm">
+              {submittingComment ? <LoadingSpinner size={16} /> : <><Send className="h-4 w-4" /> Post comment</>}
+            </button>
+          </div>
+        ) : (
+          <p className="mb-5 rounded-xl bg-stone-50 px-4 py-3 text-center text-sm text-stone-400 dark:bg-stone-800/50">
+            Comments are disabled on this author's gems.
+          </p>
+        )}
 
         {/* Comment list */}
         {comments.length === 0 ? (

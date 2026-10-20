@@ -108,8 +108,19 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-stone-200 py-8 text-center text-sm text-stone-400 dark:border-stone-800">
-        <p>Hidden Gems — a community discovery app</p>
+      <footer className="border-t border-stone-200 py-8 dark:border-stone-800">
+        <div className="mx-auto max-w-4xl px-4">
+          <p className="mb-3 text-center text-sm text-stone-400">Hidden Gems — a community discovery app</p>
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-stone-400">
+            <a href="#/privacy" className="hover:text-stone-600 dark:hover:text-stone-300">Privacy Overview</a>
+            <a href="#/terms" className="hover:text-stone-600 dark:hover:text-stone-300">Terms of Use</a>
+            <a href="#/guidelines" className="hover:text-stone-600 dark:hover:text-stone-300">Community Guidelines</a>
+            <a href="#/accuracy" className="hover:text-stone-600 dark:hover:text-stone-300">Accuracy Disclaimer</a>
+            <a href="#/content-guidelines" className="hover:text-stone-600 dark:hover:text-stone-300">Content Guidelines</a>
+            <a href="#/deletion-info" className="hover:text-stone-600 dark:hover:text-stone-300">Account Deletion</a>
+            <a href="#/support" className="hover:text-stone-600 dark:hover:text-stone-300">Contact &amp; Support</a>
+          </nav>
+        </div>
       </footer>
     </div>
   );

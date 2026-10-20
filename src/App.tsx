@@ -28,11 +28,21 @@ import NotificationsPage from '@/pages/NotificationsPage';
 import BlockedUsersPage from '@/pages/BlockedUsersPage';
 import ModeratorDashboardPage from '@/pages/ModeratorDashboardPage';
 import AdminPanelPage from '@/pages/AdminPanelPage';
+import ChangePasswordPage from '@/pages/ChangePasswordPage';
+import DeleteAccountPage from '@/pages/DeleteAccountPage';
+import PrivacyOverviewPage from '@/pages/policy/PrivacyOverviewPage';
+import TermsOfUsePage from '@/pages/policy/TermsOfUsePage';
+import CommunityGuidelinesPage from '@/pages/policy/CommunityGuidelinesPage';
+import AccuracyDisclaimerPage from '@/pages/policy/AccuracyDisclaimerPage';
+import ContentGuidelinesPage from '@/pages/policy/ContentGuidelinesPage';
+import DeletionInfoPage from '@/pages/policy/DeletionInfoPage';
+import SupportPage from '@/pages/policy/SupportPage';
 
 import { Map } from 'lucide-react';
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ['/', '/login', '/register', '/reset-password'];
+const PUBLIC_ROUTES = ['/', '/login', '/register', '/reset-password',
+  '/privacy', '/terms', '/guidelines', '/accuracy', '/content-guidelines', '/deletion-info', '/support'];
 
 function Router() {
   const route = useRoute();
@@ -62,6 +72,20 @@ function Router() {
   if (path === '/login') return <LoginPage />;
   if (path === '/register') return <RegisterPage />;
   if (path === '/reset-password') return <ResetPasswordPage />;
+
+  // Policy pages — accessible without auth, wrapped in AppShell when logged in
+  const policyPages: Record<string, React.ReactNode> = {
+    '/privacy': <PrivacyOverviewPage />,
+    '/terms': <TermsOfUsePage />,
+    '/guidelines': <CommunityGuidelinesPage />,
+    '/accuracy': <AccuracyDisclaimerPage />,
+    '/content-guidelines': <ContentGuidelinesPage />,
+    '/deletion-info': <DeletionInfoPage />,
+    '/support': <SupportPage />,
+  };
+  if (policyPages[path]) {
+    return session ? <AppShell>{policyPages[path]}</AppShell> : policyPages[path];
+  }
 
   if (loading) return <FullPageLoader />;
 
@@ -104,6 +128,8 @@ function Router() {
     if (path === '/profile' || matchPath('/profile/:id', path)) return <ProfilePage />;
     if (path === '/profile/edit') return <EditProfilePage />;
     if (path === '/settings') return <PrivacySettingsPage />;
+    if (path === '/settings/password') return <ChangePasswordPage />;
+    if (path === '/settings/delete-account') return <DeleteAccountPage />;
 
     return <PlaceholderPage title="Page not found" description="This page doesn't exist yet or may have moved." backTo="/discover" />;
   };

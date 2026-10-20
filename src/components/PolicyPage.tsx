@@ -16,8 +16,8 @@ export default function PolicyPage({ title, subtitle, children }: Props) {
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
       <PageHeader title={title} subtitle={subtitle} />
-      <div className="card space-y-4 p-6">
-        <div className="prose prose-sm max-w-none dark:prose-invert">
+      <div className="card p-6">
+        <div className="policy-content space-y-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300 [&_h2]:mb-1 [&_h2]:mt-4 [&_h2]:font-display [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-stone-800 dark:[&_h2]:text-stone-100 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
           {children}
         </div>
         <div className="mt-6 border-t border-stone-200 pt-4 dark:border-stone-800">

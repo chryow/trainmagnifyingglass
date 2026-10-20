@@ -131,7 +131,7 @@ export interface Gem {
   created_at: string;
   updated_at: string;
   // joined fields
-  author?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  author?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'allow_comments'> | null;
   community?: Pick<Community, 'id' | 'name' | 'visibility'> | null;
   category?: Pick<Category, 'id' | 'name' | 'slug' | 'icon'> | null;
   images?: GemImage[];
