@@ -3,12 +3,14 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
-import { EmptyState, ErrorState, LoadingSpinner, SkeletonCard } from '@/components/States';
+import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { uploadGemImage, validateImageFile, deleteGemImage } from '@/lib/upload';
-import type { Gem, GemImage, Community, Category, GemStatus } from '@/types/database';
+import type { Gem, GemImage, Category, Comment, GemReaction, GemReactionType } from '@/types/database';
+import { GEM_REACTION_TYPES, GEM_REACTION_LABELS, GEM_REACTION_EMOJIS } from '@/types/database';
 import {
   ArrowLeft, MapPin, Edit3, Save, X, Trash2, Send, ImagePlus,
-  Eye, Lock, Globe, Sparkles as SparkIcon, Calendar
+  Lock, Sparkles as SparkIcon, Calendar, Bookmark, MessageCircle,
+  Heart, ChevronDown, Reply, CornerDownRight
 } from 'lucide-react';
 
 export default function GemDetailsPage() {
@@ -37,6 +39,16 @@ export default function GemDetailsPage() {
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
+  // Social state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [reactions, setReactions] = useState<GemReaction[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [commentBody, setCommentBody] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyBody, setReplyBody] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+
   const load = useCallback(async () => {
     if (!gemId || !profile) return;
     setLoading(true);
@@ -50,12 +62,22 @@ export default function GemDetailsPage() {
       if (gErr || !data) { setError(true); return; }
       const g = data as Gem;
       setGem(g);
-      setImages([]);
-      const { data: imgs } = await supabase.from('gem_images').select('*').eq('gem_id', gemId).order('sort_order');
-      setImages((imgs as GemImage[] | null) ?? []);
 
-      const { data: cats } = await supabase.from('categories').select('*').order('sort_order');
-      setCategories((cats as Category[] | null) ?? []);
+      const [imgsRes, catsRes, commentsRes, reactionsRes, savedRes] = await Promise.all([
+        supabase.from('gem_images').select('*').eq('gem_id', gemId).order('sort_order'),
+        supabase.from('categories').select('*').order('sort_order'),
+        supabase.from('comments')
+          .select('*, author:profiles(id, username, display_name, avatar_url)')
+          .eq('gem_id', gemId)
+          .order('created_at', { ascending: true }),
+        supabase.from('gem_reactions').select('*').eq('gem_id', gemId),
+        supabase.from('saved_gems').select('id').eq('gem_id', gemId).eq('user_id', profile.id).maybeSingle(),
+      ]);
+      setImages((imgsRes.data as GemImage[] | null) ?? []);
+      setCategories((catsRes.data as Category[] | null) ?? []);
+      setReactions((reactionsRes.data as GemReaction[] | null) ?? []);
+      setIsSaved(!!savedRes.data);
+      setComments(buildCommentTree((commentsRes.data as Comment[] | null) ?? []));
     } catch {
       setError(true);
     } finally {
@@ -86,7 +108,7 @@ export default function GemDetailsPage() {
     if (!placeName.trim()) { setFormError('Place name is required.'); return; }
     setSaving(true);
     setFormError(null);
-    const payload = {
+    const { error: updErr } = await supabase.from('gems').update({
       title: title.trim(),
       place_name: placeName.trim(),
       category_id: categoryId || null,
@@ -94,8 +116,7 @@ export default function GemDetailsPage() {
       address: address.trim() || null,
       description: description.trim() || null,
       cover_image_url: coverImage,
-    };
-    const { error: updErr } = await supabase.from('gems').update(payload).eq('id', gem.id);
+    }).eq('id', gem.id);
     setSaving(false);
     if (updErr) {
       if (updErr.code === '23505') setFormError('You already have a published gem for this place in this community.');
@@ -166,6 +187,76 @@ export default function GemDetailsPage() {
     }
     await supabase.from('gem_images').delete().eq('id', img.id);
     await load();
+  };
+
+  // --- Social handlers ---
+
+  const handleToggleSave = async () => {
+    if (!gem || !profile) return;
+    if (isSaved) {
+      await supabase.from('saved_gems').delete().eq('gem_id', gem.id).eq('user_id', profile.id);
+      setIsSaved(false);
+    } else {
+      await supabase.from('saved_gems').insert({ gem_id: gem.id, user_id: profile.id });
+      setIsSaved(true);
+    }
+  };
+
+  const handleReact = async (type: GemReactionType) => {
+    if (!gem || !profile) return;
+    const existing = reactions.find((r) => r.user_id === profile.id && r.type === type);
+    if (existing) {
+      await supabase.from('gem_reactions').delete().eq('id', existing.id);
+    } else {
+      await supabase.from('gem_reactions').insert({ gem_id: gem.id, user_id: profile.id, type });
+    }
+    await load();
+  };
+
+  const handleSubmitComment = async () => {
+    if (!gem || !profile || !commentBody.trim()) return;
+    setSubmittingComment(true);
+    const { error: cErr } = await supabase.from('comments').insert({
+      gem_id: gem.id,
+      author_id: profile.id,
+      body: commentBody.trim(),
+    });
+    setSubmittingComment(false);
+    if (cErr) { setFormError(cErr.message); return; }
+    setCommentBody('');
+    await load();
+  };
+
+  const handleSubmitReply = async (parentId: string) => {
+    if (!gem || !profile || !replyBody.trim()) return;
+    setSubmittingComment(true);
+    const { error: cErr } = await supabase.from('comments').insert({
+      gem_id: gem.id,
+      author_id: profile.id,
+      parent_id: parentId,
+      body: replyBody.trim(),
+    });
+    setSubmittingComment(false);
+    if (cErr) { setFormError(cErr.message); return; }
+    setReplyBody('');
+    setReplyingTo(null);
+    setExpandedReplies((prev) => new Set(prev).add(parentId));
+    await load();
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Delete this comment?')) return;
+    await supabase.from('comments').delete().eq('id', commentId);
+    await load();
+  };
+
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies((prev) => {
+      const next = new Set(prev);
+      if (next.has(commentId)) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
   };
 
   if (loading) {
@@ -281,16 +372,24 @@ export default function GemDetailsPage() {
         </div>
       </div>
 
-      {/* Author */}
-      {gem.author && (
-        <button onClick={() => navigate(`/profile/${gem.author!.id}`)} className="flex items-center gap-3 rounded-xl p-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800">
-          <Avatar url={gem.author.avatar_url ?? null} name={gem.author.display_name} size={36} />
-          <div>
-            <p className="text-sm font-medium">{gem.author.display_name}</p>
-            <p className="text-xs text-stone-400">@{gem.author.username}</p>
-          </div>
-        </button>
-      )}
+      {/* Author + actions bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {gem.author && (
+          <button onClick={() => navigate(`/profile/${gem.author!.id}`)} className="flex items-center gap-3 rounded-xl p-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800">
+            <Avatar url={gem.author.avatar_url ?? null} name={gem.author.display_name} size={36} />
+            <div>
+              <p className="text-sm font-medium">{gem.author.display_name}</p>
+              <p className="text-xs text-stone-400">@{gem.author.username}</p>
+            </div>
+          </button>
+        )}
+        <div className="flex items-center gap-2">
+          <button onClick={handleToggleSave} className={`btn-outline ${isSaved ? 'text-primary-600 dark:text-primary-400' : ''}`}>
+            <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
+            {isSaved ? 'Saved' : 'Save'}
+          </button>
+        </div>
+      </div>
 
       {/* Description */}
       {gem.description && (
@@ -309,6 +408,32 @@ export default function GemDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Reactions */}
+      <div className="card p-5">
+        <h2 className="mb-3 font-display text-base font-semibold">Reactions</h2>
+        <div className="flex flex-wrap gap-2">
+          {GEM_REACTION_TYPES.map((type) => {
+            const count = reactions.filter((r) => r.type === type).length;
+            const mine = reactions.some((r) => r.user_id === profile?.id && r.type === type);
+            return (
+              <button
+                key={type}
+                onClick={() => handleReact(type)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                  mine
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
+                    : 'border-stone-200 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:text-stone-300'
+                }`}
+              >
+                <span>{GEM_REACTION_EMOJIS[type]}</span>
+                <span>{GEM_REACTION_LABELS[type]}</span>
+                {count > 0 && <span className="text-xs text-stone-400">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Gallery */}
       {images.length > 0 && (
@@ -341,6 +466,53 @@ export default function GemDetailsPage() {
         </div>
       )}
 
+      {/* Comments */}
+      <div className="card p-5">
+        <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
+          <MessageCircle className="h-5 w-5 text-stone-400" />
+          Comments ({comments.length})
+        </h2>
+
+        {/* New comment */}
+        <div className="mb-5 space-y-2">
+          <textarea
+            className="input min-h-[60px] resize-y"
+            placeholder="Share your thoughts…"
+            value={commentBody}
+            onChange={(e) => setCommentBody(e.target.value)}
+            maxLength={1000}
+          />
+          <button onClick={handleSubmitComment} disabled={submittingComment || !commentBody.trim()} className="btn-primary text-sm">
+            {submittingComment ? <LoadingSpinner size={16} /> : <><Send className="h-4 w-4" /> Post comment</>}
+          </button>
+        </div>
+
+        {/* Comment list */}
+        {comments.length === 0 ? (
+          <p className="py-4 text-center text-sm text-stone-400">No comments yet. Be the first to share!</p>
+        ) : (
+          <div className="space-y-4">
+            {comments.map((c) => (
+              <CommentItem
+                key={c.id}
+                comment={c}
+                currentUserId={profile?.id ?? ''}
+                onNavigate={(path) => navigate(path)}
+                onDelete={handleDeleteComment}
+                onReply={handleSubmitReply}
+                replyingTo={replyingTo}
+                setReplyingTo={setReplyingTo}
+                replyBody={replyBody}
+                setReplyBody={setReplyBody}
+                expanded={expandedReplies.has(c.id)}
+                onToggleExpand={() => toggleReplies(c.id)}
+                submitting={submittingComment}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Owner actions */}
       {isAuthor && (
         <div className="flex flex-wrap gap-3 border-t border-stone-200 pt-4 dark:border-stone-800">
@@ -357,4 +529,144 @@ export default function GemDetailsPage() {
       {formError && <div role="alert" className="rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{formError}</div>}
     </div>
   );
+}
+
+// ============================================================================
+// Comment component
+// ============================================================================
+
+interface CommentItemProps {
+  comment: Comment;
+  currentUserId: string;
+  onNavigate: (path: string) => void;
+  onDelete: (id: string) => void;
+  onReply: (parentId: string) => void;
+  replyingTo: string | null;
+  setReplyingTo: (id: string | null) => void;
+  replyBody: string;
+  setReplyBody: (body: string) => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  submitting: boolean;
+}
+
+function CommentItem({
+  comment, currentUserId, onNavigate, onDelete, onReply,
+  replyingTo, setReplyingTo, replyBody, setReplyBody,
+  expanded, onToggleExpand, submitting,
+}: CommentItemProps) {
+  const isMine = comment.author_id === currentUserId;
+  const replies = comment.replies ?? [];
+  const showReplies = expanded && replies.length > 0;
+  const isReplying = replyingTo === comment.id;
+
+  return (
+    <div className="space-y-2">
+      <div className="rounded-xl bg-stone-50 p-3 dark:bg-stone-800/50">
+        <div className="flex items-start gap-3">
+          {comment.author && <Avatar url={comment.author.avatar_url ?? null} name={comment.author.display_name} size={32} />}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <button onClick={() => onNavigate(`/profile/${comment.author_id}`)} className="text-sm font-medium hover:underline">
+                {comment.author?.display_name ?? 'User'}
+              </button>
+              <span className="text-xs text-stone-400">{new Date(comment.created_at).toLocaleDateString()}</span>
+            </div>
+            <p className="mt-1 whitespace-pre-line text-sm text-stone-700 dark:text-stone-300">{comment.body}</p>
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                onClick={() => setReplyingTo(isReplying ? null : comment.id)}
+                className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:text-stone-400"
+              >
+                <Reply className="h-3.5 w-3.5" /> Reply
+              </button>
+              {isMine && (
+                <button
+                  onClick={() => onDelete(comment.id)}
+                  className="flex items-center gap-1 text-xs text-error-500 hover:text-error-700 dark:text-error-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Reply form */}
+        {isReplying && (
+          <div className="mt-3 space-y-2 pl-11">
+            <textarea
+              className="input min-h-[50px] resize-y text-sm"
+              placeholder="Write a reply…"
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+              maxLength={1000}
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setReplyingTo(null)} className="btn-secondary text-xs">Cancel</button>
+              <button onClick={() => onReply(comment.id)} disabled={submitting || !replyBody.trim()} className="btn-primary text-xs">
+                {submitting ? <LoadingSpinner size={14} /> : 'Post reply'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Replies toggle */}
+      {replies.length > 0 && !comment.parent_id && (
+        <>
+          <button
+            onClick={onToggleExpand}
+            className="ml-4 flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:text-stone-400"
+          >
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showReplies ? 'rotate-180' : ''}`} />
+            {replies.length} repl{replies.length !== 1 ? 'ies' : 'y'}
+          </button>
+
+          {showReplies && (
+            <div className="ml-6 space-y-2 border-l-2 border-stone-200 pl-4 dark:border-stone-700">
+              {replies.map((reply) => (
+                <div key={reply.id} className="rounded-xl bg-stone-50 p-3 dark:bg-stone-800/50">
+                  <div className="flex items-start gap-3">
+                    <CornerDownRight className="mt-1 h-3.5 w-3.5 shrink-0 text-stone-300 dark:text-stone-600" />
+                    {reply.author && <Avatar url={reply.author.avatar_url ?? null} name={reply.author.display_name} size={28} />}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => onNavigate(`/profile/${reply.author_id}`)} className="text-sm font-medium hover:underline">
+                          {reply.author?.display_name ?? 'User'}
+                        </button>
+                        <span className="text-xs text-stone-400">{new Date(reply.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-sm text-stone-700 dark:text-stone-300">{reply.body}</p>
+                      {reply.author_id === currentUserId && (
+                        <button
+                          onClick={() => onDelete(reply.id)}
+                          className="mt-1.5 flex items-center gap-1 text-xs text-error-500 hover:text-error-700 dark:text-error-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function buildCommentTree(flat: Comment[]): Comment[] {
+  const topLevel = flat.filter((c) => !c.parent_id);
+  const replies = flat.filter((c) => c.parent_id);
+  return topLevel.map((c) => ({
+    ...c,
+    replies: replies.filter((r) => r.parent_id === c.id).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+  }));
 }

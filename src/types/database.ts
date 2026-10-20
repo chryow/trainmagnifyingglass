@@ -135,3 +135,104 @@ export interface GemImage {
   sort_order: number;
   created_at: string;
 }
+
+export type CollectionVisibility = 'public' | 'followers' | 'private';
+
+export interface SavedGem {
+  id: string;
+  user_id: string;
+  gem_id: string;
+  created_at: string;
+  gem?: Gem;
+}
+
+export interface Collection {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  cover_image_url: string | null;
+  visibility: CollectionVisibility;
+  created_at: string;
+  updated_at: string;
+  owner?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  item_count?: number;
+}
+
+export interface CollectionItem {
+  id: string;
+  collection_id: string;
+  gem_id: string;
+  added_by: string;
+  note: string | null;
+  sort_order: number;
+  created_at: string;
+  gem?: Gem;
+}
+
+export interface Comment {
+  id: string;
+  gem_id: string;
+  author_id: string;
+  parent_id: string | null;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  author?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  replies?: Comment[];
+  reactions?: CommentReaction[];
+}
+
+export interface GemReaction {
+  id: string;
+  gem_id: string;
+  user_id: string;
+  type: string;
+  created_at: string;
+}
+
+export interface CommentReaction {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  type: string;
+  created_at: string;
+}
+
+export interface Follow {
+  id: string;
+  follower_id: string;
+  followee_id: string;
+  created_at: string;
+  followee?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  follower?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export type NotificationType = 'comment' | 'reply' | 'gem_reaction' | 'comment_reaction' | 'follow' | 'collection_add';
+
+export interface AppNotification {
+  id: string;
+  recipient_id: string;
+  actor_id: string | null;
+  type: NotificationType;
+  entity_type: string | null;
+  entity_id: string | null;
+  read: boolean;
+  created_at: string;
+  actor?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export const GEM_REACTION_TYPES = ['love', 'want_to_go', 'been_there'] as const;
+export type GemReactionType = (typeof GEM_REACTION_TYPES)[number];
+
+export const GEM_REACTION_LABELS: Record<string, string> = {
+  love: 'Love',
+  want_to_go: 'Want to go',
+  been_there: 'Been there',
+};
+
+export const GEM_REACTION_EMOJIS: Record<string, string> = {
+  love: '❤️',
+  want_to_go: '🔖',
+  been_there: '✅',
+};

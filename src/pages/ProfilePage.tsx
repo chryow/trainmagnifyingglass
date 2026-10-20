@@ -4,15 +4,14 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
-import type { Community, Profile, UserInterest } from '@/types/database';
-import { MapPin, Calendar, Pencil, Settings, Layers, Compass, Users, ArrowLeft } from 'lucide-react';
+import type { Community, Profile, UserInterest, Gem, Collection, Follow } from '@/types/database';
+import { MapPin, Calendar, Pencil, Settings, Layers, Compass, Users, ArrowLeft, Bookmark, UserPlus, UserCheck, Map } from 'lucide-react';
 
 export default function ProfilePage() {
   const route = useRoute();
   const navigate = useNavigate();
-  const { profile: myProfile, refreshProfile } = useAuth();
+  const { profile: myProfile } = useAuth();
 
-  // /profile (self) or /profile/:id
   const match = matchPath('/profile/:id', route.path);
   const targetId = match?.id ?? myProfile?.id ?? '';
   const isSelf = !match || match.id === myProfile?.id;
@@ -20,12 +19,19 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [interests, setInterests] = useState<UserInterest[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [gems, setGems] = useState<Gem[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [savedGems, setSavedGems] = useState<Gem[]>([]);
+  const [following, setFollowing] = useState<Follow[]>([]);
+  const [followers, setFollowers] = useState<Follow[]>([]);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [tab, setTab] = useState<'gems' | 'collections' | 'communities' | 'about'>('about');
+  const [tab, setTab] = useState<'about' | 'gems' | 'collections' | 'saved' | 'communities' | 'following' | 'followers'>('about');
+  const [followAction, setFollowAction] = useState(false);
 
   const load = useCallback(async () => {
-    if (!targetId) return;
+    if (!targetId || !myProfile) return;
     setLoading(true);
     setError(false);
     try {
@@ -35,19 +41,78 @@ export default function ProfilePage() {
 
       const [iRes, cRes] = await Promise.all([
         supabase.from('user_interests').select('*').eq('user_id', targetId),
-        // Only show communities the viewer can see
         supabase.from('community_members').select('community:communities(*)').eq('user_id', targetId),
       ]);
       setInterests((iRes.data as UserInterest[] | null) ?? []);
       setCommunities(((cRes.data as { community: Community }[] | null) ?? []).map((c) => c.community).filter(Boolean));
+
+      // Gems by this user (only published ones visible to others; drafts visible to self)
+      const gemsQuery = isSelf
+        ? supabase.from('gems').select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)').eq('author_id', targetId).order('created_at', { ascending: false })
+        : supabase.from('gems').select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)').eq('author_id', targetId).eq('status', 'published').order('created_at', { ascending: false });
+      const { data: gData } = await gemsQuery;
+      setGems((gData as Gem[] | null) ?? []);
+
+      // Collections — visible based on privacy + viewer relationship
+      const { data: colData } = await supabase
+        .from('collections')
+        .select('*, owner:profiles(id, username, display_name, avatar_url)')
+        .eq('owner_id', targetId)
+        .order('updated_at', { ascending: false });
+      setCollections((colData as Collection[] | null) ?? []);
+
+      // Saved gems (only visible to self)
+      if (isSelf) {
+        const { data: sData } = await supabase
+          .from('saved_gems')
+          .select('gem:gems(*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon))')
+          .eq('user_id', targetId)
+          .order('created_at', { ascending: false });
+        const sg = (sData as { gem: Gem }[] | null) ?? [];
+        setSavedGems(sg.map((s) => s.gem).filter(Boolean));
+      }
+
+      // Following / followers
+      const [fRes, frRes] = await Promise.all([
+        supabase.from('follows').select('*, followee:profiles(id, username, display_name, avatar_url)').eq('follower_id', targetId),
+        supabase.from('follows').select('*, follower:profiles(id, username, display_name, avatar_url)').eq('followee_id', targetId),
+      ]);
+      setFollowing((fRes.data as Follow[] | null) ?? []);
+      setFollowers((frRes.data as Follow[] | null) ?? []);
+
+      // Is current user following this person?
+      if (!isSelf) {
+        const { data: myFollow } = await supabase
+          .from('follows')
+          .select('id')
+          .eq('follower_id', myProfile.id)
+          .eq('followee_id', targetId)
+          .maybeSingle();
+        setIsFollowing(!!myFollow);
+      }
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [targetId]);
+  }, [targetId, isSelf, myProfile]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleToggleFollow = async () => {
+    if (!profile || !myProfile || isSelf) return;
+    setFollowAction(true);
+    if (isFollowing) {
+      await supabase.from('follows').delete().eq('follower_id', myProfile.id).eq('followee_id', profile.id);
+      setIsFollowing(false);
+      setFollowers((prev) => prev.filter((f) => f.follower_id !== myProfile.id));
+    } else {
+      await supabase.from('follows').insert({ follower_id: myProfile.id, followee_id: profile.id });
+      setIsFollowing(true);
+      setFollowers((prev) => [...prev, { id: 'temp', follower_id: myProfile.id, followee_id: profile.id, created_at: new Date().toISOString(), follower: { id: myProfile.id, username: myProfile.username, display_name: myProfile.display_name, avatar_url: myProfile.avatar_url } }]);
+    }
+    setFollowAction(false);
+  };
 
   if (loading) {
     return <div className="flex items-center gap-3 py-16"><LoadingSpinner className="text-primary-500" /> <span className="text-stone-500">Loading profile…</span></div>;
@@ -58,6 +123,19 @@ export default function ProfilePage() {
 
   const joinDate = new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
   const showArea = isSelf || profile.show_area;
+  const showFollowingTab = isSelf || profile.show_following;
+  const showFollowersTab = isSelf || profile.show_followers;
+  const canFollow = !isSelf && profile.allow_followers;
+
+  const tabs: { key: typeof tab; label: string; icon: typeof Users }[] = [
+    { key: 'about', label: 'About', icon: Users },
+    { key: 'gems', label: `Gems (${gems.length})`, icon: Compass },
+    { key: 'collections', label: `Collections (${collections.length})`, icon: Layers },
+    ...(isSelf ? [{ key: 'saved' as const, label: `Saved (${savedGems.length})`, icon: Bookmark }] : []),
+    { key: 'communities', label: 'Communities', icon: Users },
+    ...(showFollowingTab ? [{ key: 'following' as const, label: `Following (${following.length})`, icon: UserCheck }] : []),
+    ...(showFollowersTab ? [{ key: 'followers' as const, label: `Followers (${followers.length})`, icon: Users }] : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -70,12 +148,18 @@ export default function ProfilePage() {
         <div className="px-5 pb-5 sm:px-6">
           <div className="-mt-10 flex flex-wrap items-end justify-between gap-4">
             <Avatar url={profile.avatar_url} name={profile.display_name} size={80} />
-            {isSelf && (
-              <div className="flex gap-2">
-                <button onClick={() => navigate('/settings')} className="btn-outline"><Settings className="h-4 w-4" /> Privacy</button>
-                <button onClick={() => navigate('/profile/edit')} className="btn-primary"><Pencil className="h-4 w-4" /> Edit profile</button>
-              </div>
-            )}
+            <div className="flex gap-2">
+              {isSelf ? (
+                <>
+                  <button onClick={() => navigate('/settings')} className="btn-outline"><Settings className="h-4 w-4" /> Privacy</button>
+                  <button onClick={() => navigate('/profile/edit')} className="btn-primary"><Pencil className="h-4 w-4" /> Edit profile</button>
+                </>
+              ) : canFollow ? (
+                <button onClick={handleToggleFollow} disabled={followAction} className={isFollowing ? 'btn-outline' : 'btn-primary'}>
+                  {followAction ? <LoadingSpinner size={16} /> : isFollowing ? <><UserCheck className="h-4 w-4" /> Following</> : <><UserPlus className="h-4 w-4" /> Follow</>}
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-4">
@@ -93,12 +177,7 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-        {([
-          { key: 'about', label: 'About', icon: Users },
-          { key: 'gems', label: 'Gems', icon: Compass },
-          { key: 'collections', label: 'Collections', icon: Layers },
-          { key: 'communities', label: 'Communities', icon: Users },
-        ] as const).map((t) => (
+        {tabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${tab === t.key ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}>
             <t.icon className="h-4 w-4" /> {t.label}
           </button>
@@ -128,10 +207,72 @@ export default function ProfilePage() {
       )}
 
       {tab === 'gems' && (
-        <EmptyState icon={<Compass className="h-6 w-6" />} title="Gems coming in Phase 2" description="Recommended places will appear here once the gem creation feature is built." />
+        <div>
+          {gems.length === 0 ? (
+            <EmptyState icon={<Compass className="h-6 w-6" />} title="No gems yet" description={isSelf ? "Share your first hidden gem with a community." : "This person hasn't shared any gems yet."} action={isSelf ? <button onClick={() => navigate('/gems/new')} className="btn-primary">Share a gem</button> : undefined} />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {gems.map((g) => (
+                <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
+                  {g.cover_image_url ? (
+                    <img src={g.cover_image_url} alt={g.title} className="h-32 w-full object-cover" />
+                  ) : (
+                    <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30" />
+                  )}
+                  <div className="p-4">
+                    {g.status === 'draft' && <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>}
+                    <h3 className="font-display text-base font-semibold">{g.title}</h3>
+                    <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
+
       {tab === 'collections' && (
-        <EmptyState icon={<Layers className="h-6 w-6" />} title="Collections coming in Phase 3" description="Curated collections of gems will appear here." />
+        <div>
+          {collections.length === 0 ? (
+            <EmptyState icon={<Layers className="h-6 w-6" />} title="No collections yet" description={isSelf ? "Create a collection to organize your favorite gems." : "This person hasn't created any visible collections."} action={isSelf ? <button onClick={() => navigate('/collections/new')} className="btn-primary">Create collection</button> : undefined} />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {collections.map((c) => (
+                <button key={c.id} onClick={() => navigate(`/collections/${c.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
+                  <div className="h-24 bg-gradient-to-br from-primary-300 to-accent-400" />
+                  <div className="p-4">
+                    <h3 className="font-display text-base font-semibold">{c.name}</h3>
+                    {c.description && <p className="mt-1 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">{c.description}</p>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'saved' && isSelf && (
+        <div>
+          {savedGems.length === 0 ? (
+            <EmptyState icon={<Bookmark className="h-6 w-6" />} title="No saved gems" description="Bookmark gems you want to revisit later." />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {savedGems.map((g) => (
+                <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
+                  {g.cover_image_url ? (
+                    <img src={g.cover_image_url} alt={g.title} className="h-32 w-full object-cover" />
+                  ) : (
+                    <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30" />
+                  )}
+                  <div className="p-4">
+                    <h3 className="font-display text-base font-semibold">{g.title}</h3>
+                    <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {tab === 'communities' && (
@@ -146,6 +287,46 @@ export default function ProfilePage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{c.name}</p>
                     <p className="truncate text-xs text-stone-400">{c.general_area ?? '—'}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'following' && showFollowingTab && (
+        <div>
+          {following.length === 0 ? (
+            <EmptyState icon={<UserCheck className="h-6 w-6" />} title="Not following anyone" description={isSelf ? "Follow people to see their gems and collections in your feed." : "This person isn't following anyone."} action={isSelf ? <button onClick={() => navigate('/search')} className="btn-primary">Discover people</button> : undefined} />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {following.map((f) => (
+                <button key={f.id} onClick={() => navigate(`/profile/${f.followee_id}`)} className="card flex items-center gap-3 p-3.5 text-left transition-shadow hover:shadow-card-hover">
+                  <Avatar url={f.followee?.avatar_url ?? null} name={f.followee?.display_name ?? 'User'} size={40} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{f.followee?.display_name}</p>
+                    <p className="truncate text-xs text-stone-400">@{f.followee?.username}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'followers' && showFollowersTab && (
+        <div>
+          {followers.length === 0 ? (
+            <EmptyState icon={<Users className="h-6 w-6" />} title="No followers yet" description={isSelf ? "Share great gems and people will follow you." : "This person doesn't have followers yet."} />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {followers.map((f) => (
+                <button key={f.id} onClick={() => navigate(`/profile/${f.follower_id}`)} className="card flex items-center gap-3 p-3.5 text-left transition-shadow hover:shadow-card-hover">
+                  <Avatar url={f.follower?.avatar_url ?? null} name={f.follower?.display_name ?? 'User'} size={40} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{f.follower?.display_name}</p>
+                    <p className="truncate text-xs text-stone-400">@{f.follower?.username}</p>
                   </div>
                 </button>
               ))}
