@@ -226,7 +226,10 @@ export default function GemDetailsPage() {
       body: commentBody.trim(),
     });
     setSubmittingComment(false);
-    if (cErr) { setFormError(cErr.message); return; }
+    if (cErr) {
+      setFormError(cErr.code === '42501' ? 'You\'re posting too quickly. Please wait a moment before commenting again.' : cErr.message);
+      return;
+    }
     setCommentBody('');
     await load();
   };
@@ -241,7 +244,10 @@ export default function GemDetailsPage() {
       body: replyBody.trim(),
     });
     setSubmittingComment(false);
-    if (cErr) { setFormError(cErr.message); return; }
+    if (cErr) {
+      setFormError(cErr.code === '42501' ? 'You\'re posting too quickly. Please wait a moment before replying again.' : cErr.message);
+      return;
+    }
     setReplyBody('');
     setReplyingTo(null);
     setExpandedReplies((prev) => new Set(prev).add(parentId));
