@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/States';
-import type { Category, Community, UserInterest } from '@/types/database';
+import type { Category, Community, UserInterest, Gem } from '@/types/database';
 import { Search, Compass as CompassIcon, Sparkles, TrendingUp, MapPin, ArrowRight } from 'lucide-react';
 
 export default function DiscoverPage() {
@@ -13,6 +13,8 @@ export default function DiscoverPage() {
   const [interests, setInterests] = useState<UserInterest[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [gems, setGems] = useState<Gem[]>([]);
+  const [myDrafts, setMyDrafts] = useState<Gem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
@@ -22,14 +24,23 @@ export default function DiscoverPage() {
     setLoading(true);
     setError(false);
     try {
-      const [interestsRes, categoriesRes, communitiesRes] = await Promise.all([
+      const [interestsRes, categoriesRes, communitiesRes, gemsRes, draftsRes] = await Promise.all([
         supabase.from('user_interests').select('*').eq('user_id', profile.id),
         supabase.from('categories').select('*').order('sort_order'),
         supabase.from('communities').select('*').eq('visibility', 'public').eq('is_active', true).order('created_at', { ascending: false }).limit(6),
+        supabase
+          .from('gems')
+          .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
+          .eq('status', 'published')
+          .order('created_at', { ascending: false })
+          .limit(12),
+        supabase.from('gems').select('*').eq('author_id', profile.id).eq('status', 'draft').order('updated_at', { ascending: false }).limit(4),
       ]);
       setInterests((interestsRes.data as UserInterest[] | null) ?? []);
       setCategories((categoriesRes.data as Category[] | null) ?? []);
       setCommunities((communitiesRes.data as Community[] | null) ?? []);
+      setGems((gemsRes.data as Gem[] | null) ?? []);
+      setMyDrafts((draftsRes.data as Gem[] | null) ?? []);
     } catch {
       setError(true);
     } finally {
@@ -92,18 +103,62 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      {/* Coming-soon sections for Phase 2+ */}
-      <section className="card overflow-hidden">
-        <div className="flex flex-col items-center gap-3 p-8 text-center">
-          <div className="rounded-2xl bg-accent-50 p-3 text-accent-600 dark:bg-accent-900/30 dark:text-accent-400">
-            <CompassIcon className="h-6 w-6" />
+      {/* Recent gems */}
+      {gems.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CompassIcon className="h-4 w-4 text-primary-500" />
+              <h2 className="section-title text-lg">Recent gems</h2>
+            </div>
+            <button onClick={() => navigate('/search')} className="flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <h2 className="font-display text-lg font-semibold">Personalized gems are coming soon</h2>
-          <p className="max-w-md text-sm text-stone-500 dark:text-stone-400">
-            In the next phase, this feed will show recently added gems, community-confirmed spots, and places near your area — filtered by your interests.
-          </p>
-        </div>
-      </section>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {gems.map((g) => (
+              <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
+                {g.cover_image_url ? (
+                  <img src={g.cover_image_url} alt={g.title} className="h-36 w-full object-cover" />
+                ) : (
+                  <div className="flex h-36 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30">
+                    <Sparkles className="h-6 w-6 text-primary-400" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <div className="mb-1 flex items-center gap-2">
+                    {g.category && <span className="badge bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{g.category.name}</span>}
+                    <span className="text-xs text-stone-400">{g.community?.name}</span>
+                  </div>
+                  <h3 className="font-display text-base font-semibold">{g.title}</h3>
+                  <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* My drafts */}
+      {myDrafts.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="section-title text-lg">Your drafts</h2>
+            <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{myDrafts.length}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {myDrafts.map((g) => (
+              <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card flex items-center gap-3 p-4 text-left transition-shadow hover:shadow-card-hover">
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-sm font-semibold">{g.title}</h3>
+                  <p className="truncate text-xs text-stone-400">{g.place_name}</p>
+                </div>
+                <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Categories */}
       {categories.length > 0 && (

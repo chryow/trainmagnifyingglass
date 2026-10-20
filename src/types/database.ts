@@ -101,3 +101,37 @@ export const ONBOARDING_INTERESTS = [
 ] as const;
 
 export type OnboardingInterest = (typeof ONBOARDING_INTERESTS)[number];
+
+export type GemStatus = 'draft' | 'published';
+
+export interface Gem {
+  id: string;
+  community_id: string;
+  author_id: string;
+  category_id: string | null;
+  title: string;
+  description: string | null;
+  place_name: string;
+  area: string | null;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  status: GemStatus;
+  cover_image_url: string | null;
+  is_hidden: boolean;
+  created_at: string;
+  updated_at: string;
+  // joined fields
+  author?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  community?: Pick<Community, 'id' | 'name' | 'visibility'> | null;
+  category?: Pick<Category, 'id' | 'name' | 'slug' | 'icon'> | null;
+  images?: GemImage[];
+}
+
+export interface GemImage {
+  id: string;
+  gem_id: string;
+  image_url: string;
+  sort_order: number;
+  created_at: string;
+}

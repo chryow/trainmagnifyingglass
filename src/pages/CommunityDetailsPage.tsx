@@ -4,8 +4,8 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
-import type { Community, CommunityMember, Profile, CommunityType } from '@/types/database';
-import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus } from 'lucide-react';
+import type { Community, CommunityMember, Profile, CommunityType, Gem } from '@/types/database';
+import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus, Sparkles } from 'lucide-react';
 
 export default function CommunityDetailsPage() {
   const route = useRoute();
@@ -25,6 +25,7 @@ export default function CommunityDetailsPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [gems, setGems] = useState<Gem[]>([]);
 
   const load = useCallback(async () => {
     if (!communityId || !profile) return;
@@ -44,6 +45,13 @@ export default function CommunityDetailsPage() {
 
       const { data: mine } = await supabase.from('community_members').select('*').eq('community_id', communityId).eq('user_id', profile.id).maybeSingle();
       setMyMembership((mine as CommunityMember | null) ?? null);
+
+      const { data: gData } = await supabase
+        .from('gems')
+        .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
+        .eq('community_id', communityId)
+        .order('created_at', { ascending: false });
+      setGems((gData as Gem[] | null) ?? []);
     } catch {
       setError(true);
     } finally {
@@ -236,10 +244,39 @@ export default function CommunityDetailsPage() {
         )}
       </div>
 
-      {/* Gems placeholder (Phase 2) */}
-      <div className="card p-6">
-        <h2 className="mb-1 font-display text-lg font-semibold">Hidden gems</h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400">Gems shared in this community will appear here in the next phase.</p>
+      {/* Gems in this community */}
+      <div className="card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold">Hidden gems ({gems.length})</h2>
+          {isMember && (
+            <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-secondary text-sm"><Plus className="h-4 w-4" /> Add a gem</button>
+          )}
+        </div>
+        {gems.length === 0 ? (
+          <EmptyState icon={<Plus className="h-6 w-6" />} title="No gems yet" description={isMember ? "Share the first hidden gem in this community." : "Gems will appear here once members start sharing."} />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {gems.map((g) => (
+              <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
+                {g.cover_image_url ? (
+                  <img src={g.cover_image_url} alt={g.title} className="h-32 w-full object-cover" />
+                ) : (
+                  <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30">
+                    <Sparkles className="h-6 w-6 text-primary-400" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <div className="mb-1 flex items-center gap-2">
+                    {g.category && <span className="badge bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{g.category.name}</span>}
+                    {g.status === 'draft' && <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>}
+                  </div>
+                  <h3 className="font-display text-base font-semibold">{g.title}</h3>
+                  <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
