@@ -104,6 +104,13 @@ export default function LoginPage() {
               Create an account
             </button>
           </p>
+          <p className="mt-3 text-center text-xs text-stone-400">
+            <button onClick={() => navigate('/privacy')} className="underline hover:text-stone-500">Privacy Policy</button>
+            {' · '}
+            <button onClick={() => navigate('/terms')} className="underline hover:text-stone-500">Terms</button>
+            {' · '}
+            <button onClick={() => navigate('/support')} className="underline hover:text-stone-500">Support</button>
+          </p>
 
           <div className="mt-8 flex justify-center">
             <LogoWithText className="opacity-40" />

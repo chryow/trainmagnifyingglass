@@ -197,6 +197,12 @@ export default function RegisterPage() {
               Sign in
             </button>
           </p>
+          <p className="mt-3 text-center text-xs text-stone-400">
+            By creating an account, you agree to our{' '}
+            <button onClick={() => navigate('/terms')} className="underline hover:text-stone-500">Terms</button>{' '}
+            and{' '}
+            <button onClick={() => navigate('/privacy')} className="underline hover:text-stone-500">Privacy Policy</button>.
+          </p>
         </div>
       </div>
     </div>

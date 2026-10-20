@@ -10,6 +10,7 @@ import { Shield, Flag, Gavel, Users, Clock, CheckCircle, XCircle, UserX, UserChe
 
 export default function AdminPanelPage() {
   const { profile } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [tab, setTab] = useState<'escalated' | 'reports' | 'users' | 'history'>('escalated');
   const [reports, setReports] = useState<Report[]>([]);
   const [actions, setActions] = useState<ModerationAction[]>([]);
@@ -23,6 +24,10 @@ export default function AdminPanelPage() {
     setLoading(true);
     setError(false);
     try {
+      const { data: adminCheck } = await supabase.rpc('is_platform_admin');
+      const admin = !!adminCheck;
+      setIsAdmin(admin);
+      if (!admin) { setLoading(false); return; }
       const [rRes, aRes, uRes] = await Promise.all([
         supabase.from('reports')
           .select('*, reporter:profiles!reports_reporter_id_fkey(id, username, display_name, avatar_url)')
@@ -96,6 +101,9 @@ export default function AdminPanelPage() {
   }
   if (error) {
     return <ErrorState description="Couldn't load the admin panel." onRetry={load} />;
+  }
+  if (isAdmin === false) {
+    return <ErrorState title="Not authorized" description="You need platform administrator privileges to access this page." />;
   }
 
   const escalatedReports = reports.filter((r) => r.status === 'escalated');
