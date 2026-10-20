@@ -11,6 +11,8 @@ import { Shield, Flag, Gavel, Users, Clock, CheckCircle, XCircle, UserX, UserChe
 export default function AdminPanelPage() {
   const { profile } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [bootstrapping, setBootstrapping] = useState(false);
+  const [bootstrapMsg, setBootstrapMsg] = useState<string | null>(null);
   const [tab, setTab] = useState<'escalated' | 'reports' | 'users' | 'history'>('escalated');
   const [reports, setReports] = useState<Report[]>([]);
   const [actions, setActions] = useState<ModerationAction[]>([]);
@@ -103,7 +105,38 @@ export default function AdminPanelPage() {
     return <ErrorState description="Couldn't load the admin panel." onRetry={load} />;
   }
   if (isAdmin === false) {
-    return <ErrorState title="Not authorized" description="You need platform administrator privileges to access this page." />;
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Platform admin" subtitle="Manage escalated reports, user accounts, and review all moderation actions." />
+        <div className="card p-6 text-center">
+          <Shield className="mx-auto mb-3 h-10 w-10 text-stone-400" />
+          <h2 className="font-display text-lg font-semibold">Not authorized</h2>
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">You need platform administrator privileges to access this page.</p>
+          <div className="mt-5 border-t border-stone-200 pt-5 dark:border-stone-800">
+            <p className="text-sm text-stone-600 dark:text-stone-300">No admin has been assigned yet. You can claim the first admin role for this platform.</p>
+            <button
+              onClick={async () => {
+                setBootstrapping(true);
+                setBootstrapMsg(null);
+                const { data, error: rpcErr } = await supabase.rpc('try_bootstrap_first_admin');
+                setBootstrapping(false);
+                if (rpcErr) { setBootstrapMsg(rpcErr.message); return; }
+                if (data && (data as { success?: boolean }).success) {
+                  setBootstrapMsg('Admin role granted! Please sign out and sign back in for it to take effect.');
+                } else {
+                  setBootstrapMsg('An admin already exists. Contact them to be promoted.');
+                }
+              }}
+              disabled={bootstrapping}
+              className="btn-primary mt-4"
+            >
+              {bootstrapping ? <LoadingSpinner size={16} /> : <><Shield className="h-4 w-4" /> Become the first admin</>}
+            </button>
+            {bootstrapMsg && <p className="mt-3 text-sm text-stone-600 dark:text-stone-300">{bootstrapMsg}</p>}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const escalatedReports = reports.filter((r) => r.status === 'escalated');
