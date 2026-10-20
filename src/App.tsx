@@ -20,8 +20,13 @@ import PlaceholderPage from '@/pages/PlaceholderPage';
 import CreateGemPage from '@/pages/CreateGemPage';
 import GemDetailsPage from '@/pages/GemDetailsPage';
 import SearchPage from '@/pages/SearchPage';
+import CollectionsPage from '@/pages/CollectionsPage';
+import CollectionDetailsPage from '@/pages/CollectionDetailsPage';
+import CreateCollectionPage from '@/pages/CreateCollectionPage';
+import FollowingPage from '@/pages/FollowingPage';
+import NotificationsPage from '@/pages/NotificationsPage';
 
-import { Bell, Layers, Map, Heart } from 'lucide-react';
+import { Map } from 'lucide-react';
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/', '/login', '/register', '/reset-password'];
@@ -83,11 +88,12 @@ function Router() {
     if (path === '/gems/new') return <CreateGemPage />;
     if (matchPath('/gems/:id', path)) return <GemDetailsPage />;
 
-    if (path === '/collections') return <PlaceholderPage title="Collections" description="Collections will be introduced in Phase 3, letting you organize gems into curated lists." icon={Layers} />;
-    if (matchPath('/collections/:id', path)) return <PlaceholderPage title="Collection" description="Collection details will be available in Phase 3." icon={Layers} />;
+    if (path === '/collections') return <CollectionsPage />;
+    if (path === '/collections/new') return <CreateCollectionPage />;
+    if (matchPath('/collections/:id', path)) return <CollectionDetailsPage />;
 
-    if (path === '/following') return <PlaceholderPage title="Following" description="A feed of gems and collections from people you follow will arrive in Phase 3." icon={Heart} />;
-    if (path === '/notifications') return <PlaceholderPage title="Notifications" description="Realtime notifications will be added in Phase 3." icon={Bell} />;
+    if (path === '/following') return <FollowingPage />;
+    if (path === '/notifications') return <NotificationsPage />;
 
     if (path === '/profile' || matchPath('/profile/:id', path)) return <ProfilePage />;
     if (path === '/profile/edit') return <EditProfilePage />;
