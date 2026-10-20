@@ -120,6 +120,10 @@ function notificationText(type: NotificationType): string {
     case 'comment_reaction': return 'reacted to your comment';
     case 'follow': return 'started following you';
     case 'collection_add': return 'added your gem to a collection';
+    case 'correction_accepted': return 'accepted your correction suggestion';
+    case 'correction_rejected': return 'rejected your correction suggestion';
+    case 'correction_needs_info': return 'requested more information on your correction';
+    case 'correction_escalated': return 'escalated your correction for review';
   }
 }
 
@@ -136,6 +140,11 @@ function NotificationIcon({ type }: { type: NotificationType }) {
       return <UserPlus className={`${iconClass} text-accent-500`} />;
     case 'collection_add':
       return <Layers className={`${iconClass} text-primary-500`} />;
+    case 'correction_accepted':
+    case 'correction_rejected':
+    case 'correction_needs_info':
+    case 'correction_escalated':
+      return <Bookmark className={`${iconClass} text-accent-500`} />;
     default:
       return <Bell className={`${iconClass} text-stone-400`} />;
   }

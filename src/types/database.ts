@@ -103,6 +103,7 @@ export const ONBOARDING_INTERESTS = [
 export type OnboardingInterest = (typeof ONBOARDING_INTERESTS)[number];
 
 export type GemStatus = 'draft' | 'published';
+export type VerificationStatus = 'new' | 'community_confirmed' | 'may_be_outdated' | 'temporarily_unavailable' | 'permanently_closed' | 'under_review';
 
 export interface Gem {
   id: string;
@@ -119,6 +120,7 @@ export interface Gem {
   status: GemStatus;
   cover_image_url: string | null;
   is_hidden: boolean;
+  verification_status: VerificationStatus;
   created_at: string;
   updated_at: string;
   // joined fields
@@ -208,7 +210,7 @@ export interface Follow {
   follower?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
 }
 
-export type NotificationType = 'comment' | 'reply' | 'gem_reaction' | 'comment_reaction' | 'follow' | 'collection_add';
+export type NotificationType = 'comment' | 'reply' | 'gem_reaction' | 'comment_reaction' | 'follow' | 'collection_add' | 'correction_accepted' | 'correction_rejected' | 'correction_needs_info' | 'correction_escalated';
 
 export interface AppNotification {
   id: string;
@@ -235,4 +237,139 @@ export const GEM_REACTION_EMOJIS: Record<string, string> = {
   love: '❤️',
   want_to_go: '🔖',
   been_there: '✅',
+};
+
+// ============================================================
+// Phase 4 — Information Accuracy
+// ============================================================
+
+export type ConfirmationType = 'still_accurate' | 'information_changed' | 'temporarily_unavailable' | 'permanently_closed' | 'could_not_find';
+
+export const CONFIRMATION_TYPES: ConfirmationType[] = ['still_accurate', 'information_changed', 'temporarily_unavailable', 'permanently_closed', 'could_not_find'];
+
+export const CONFIRMATION_LABELS: Record<ConfirmationType, string> = {
+  still_accurate: 'Still Accurate',
+  information_changed: 'Information Has Changed',
+  temporarily_unavailable: 'Temporarily Unavailable',
+  permanently_closed: 'Permanently Closed',
+  could_not_find: 'Could Not Find It',
+};
+
+export const CONFIRMATION_DESCRIPTIONS: Record<ConfirmationType, string> = {
+  still_accurate: 'I visited recently and the information is still correct.',
+  information_changed: 'Some details have changed since this was posted.',
+  temporarily_unavailable: 'The place is temporarily closed or unavailable.',
+  permanently_closed: 'The place appears to be permanently closed.',
+  could_not_find_it: 'I could not find this place at the listed location.',
+};
+
+export interface GemConfirmation {
+  id: string;
+  gem_id: string;
+  user_id: string;
+  confirmation_type: ConfirmationType;
+  note: string | null;
+  evidence_image_url: string | null;
+  withdrawn_at: string | null;
+  created_at: string;
+  updated_at: string;
+  author?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export type CorrectionType = 'name' | 'address' | 'description' | 'category' | 'price_level' | 'facilities' | 'accessibility' | 'visiting_time' | 'availability' | 'other';
+
+export const CORRECTION_TYPES: CorrectionType[] = ['name', 'address', 'description', 'category', 'price_level', 'facilities', 'accessibility', 'visiting_time', 'availability', 'other'];
+
+export const CORRECTION_LABELS: Record<CorrectionType, string> = {
+  name: 'Name',
+  address: 'Address',
+  description: 'Description',
+  category: 'Category',
+  price_level: 'Price Level',
+  facilities: 'Facilities',
+  accessibility: 'Accessibility Information',
+  visiting_time: 'Recommended Visiting Time',
+  availability: 'Availability or Closure Information',
+  other: 'Other',
+};
+
+export type CorrectionStatus = 'pending' | 'accepted' | 'rejected' | 'needs_info' | 'escalated';
+
+export const CORRECTION_STATUS_LABELS: Record<CorrectionStatus, string> = {
+  pending: 'Pending Review',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  needs_info: 'Needs More Information',
+  escalated: 'Escalated for Review',
+};
+
+export interface CorrectionSuggestion {
+  id: string;
+  gem_id: string;
+  suggested_by: string;
+  correction_type: CorrectionType;
+  current_value: string | null;
+  suggested_value: string;
+  explanation: string;
+  evidence_url: string | null;
+  status: CorrectionStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  resolution_note: string | null;
+  created_at: string;
+  updated_at: string;
+  suggester?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  reviewer?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export type ChangeSource = 'owner_edit' | 'accepted_correction' | 'verification_calculation' | 'system_update';
+
+export interface GemEditHistory {
+  id: string;
+  gem_id: string;
+  changed_field: string;
+  previous_value: string | null;
+  new_value: string | null;
+  change_source: ChangeSource;
+  changed_by: string | null;
+  related_correction_id: string | null;
+  reason: string | null;
+  created_at: string;
+  changed_by_user?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export const VERIFICATION_STATUS_LABELS: Record<VerificationStatus, string> = {
+  new: 'New',
+  community_confirmed: 'Community Confirmed',
+  may_be_outdated: 'Information May Be Outdated',
+  temporarily_unavailable: 'Temporarily Unavailable',
+  permanently_closed: 'Permanently Closed',
+  under_review: 'Under Review',
+};
+
+export const VERIFICATION_STATUS_DESCRIPTIONS: Record<VerificationStatus, string> = {
+  new: 'This gem was recently added and has not yet been confirmed by the community.',
+  community_confirmed: 'Recently confirmed by community members.',
+  may_be_outdated: 'Information may be outdated. No recent confirmations.',
+  temporarily_unavailable: 'Reported as temporarily unavailable by community members.',
+  permanently_closed: 'Reported as permanently closed by multiple community members.',
+  under_review: 'Recent reports conflict. This gem needs review.',
+};
+
+export const FIELD_DISPLAY_NAMES: Record<string, string> = {
+  title: 'Name',
+  description: 'Description',
+  place_name: 'Place Name',
+  area: 'Area',
+  address: 'Address',
+  category_id: 'Category',
+  cover_image_url: 'Cover Image',
+  verification_status: 'Verification Status',
+};
+
+export const CHANGE_SOURCE_LABELS: Record<ChangeSource, string> = {
+  owner_edit: 'Owner Edit',
+  accepted_correction: 'Accepted Correction',
+  verification_calculation: 'Status Recalculation',
+  system_update: 'System Update',
 };
