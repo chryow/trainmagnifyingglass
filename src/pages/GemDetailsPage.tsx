@@ -5,6 +5,7 @@ import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { uploadGemImage, validateImageFile, deleteGemImage } from '@/lib/upload';
+import AccuracyPanel from '@/components/AccuracyPanel';
 import type { Gem, GemImage, Category, Comment, GemReaction, GemReactionType } from '@/types/database';
 import { GEM_REACTION_TYPES, GEM_REACTION_LABELS, GEM_REACTION_EMOJIS } from '@/types/database';
 import {
@@ -408,6 +409,9 @@ export default function GemDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Phase 4: Information Accuracy Panel */}
+      <AccuracyPanel gem={gem} isAuthor={isAuthor} onGemUpdated={load} />
 
       {/* Reactions */}
       <div className="card p-5">

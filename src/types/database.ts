@@ -260,7 +260,7 @@ export const CONFIRMATION_DESCRIPTIONS: Record<ConfirmationType, string> = {
   information_changed: 'Some details have changed since this was posted.',
   temporarily_unavailable: 'The place is temporarily closed or unavailable.',
   permanently_closed: 'The place appears to be permanently closed.',
-  could_not_find_it: 'I could not find this place at the listed location.',
+  could_not_find: 'I could not find this place at the listed location.',
 };
 
 export interface GemConfirmation {
