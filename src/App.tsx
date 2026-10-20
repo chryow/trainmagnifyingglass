@@ -17,8 +17,11 @@ import ProfilePage from '@/pages/ProfilePage';
 import EditProfilePage from '@/pages/EditProfilePage';
 import PrivacySettingsPage from '@/pages/PrivacySettingsPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
+import CreateGemPage from '@/pages/CreateGemPage';
+import GemDetailsPage from '@/pages/GemDetailsPage';
+import SearchPage from '@/pages/SearchPage';
 
-import { Bell, Layers, Map, Heart, Plus, Compass } from 'lucide-react';
+import { Bell, Layers, Map, Heart } from 'lucide-react';
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/', '/login', '/register', '/reset-password'];
@@ -70,14 +73,15 @@ function Router() {
     // Main app routes
     if (path === '/discover') return <DiscoverPage />;
 
-    if (path === '/explore') return <PlaceholderPage title="Explore" description="The full explore screen with filters and sorting will arrive in Phase 2 alongside gem creation." icon={Map} />;
-    if (matchPath('/search', path)) return <PlaceholderPage title="Search" description="Search results will appear here in Phase 2." icon={Compass} />;
+    if (path === '/explore') return <PlaceholderPage title="Explore" description="The full explore screen with filters and sorting will arrive in a future phase." icon={Map} />;
+    if (matchPath('/search', path)) return <SearchPage />;
 
     if (path === '/communities') return <CommunitiesPage />;
     if (matchPath('/communities/:id', path)) return <CommunityDetailsPage />;
     if (path === '/communities/new') return <CreateCommunityPage />;
 
-    if (matchPath('/gems/new', path)) return <PlaceholderPage title="Create a Hidden Gem" description="The multi-step gem creation form will be built in Phase 2." icon={Plus} backTo="/discover" />;
+    if (path === '/gems/new') return <CreateGemPage />;
+    if (matchPath('/gems/:id', path)) return <GemDetailsPage />;
 
     if (path === '/collections') return <PlaceholderPage title="Collections" description="Collections will be introduced in Phase 3, letting you organize gems into curated lists." icon={Layers} />;
     if (matchPath('/collections/:id', path)) return <PlaceholderPage title="Collection" description="Collection details will be available in Phase 3." icon={Layers} />;

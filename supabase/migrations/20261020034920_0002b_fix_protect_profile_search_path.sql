@@ -1,0 +1,1 @@
+ALTER FUNCTION public.protect_profile_role() SET search_path = public;

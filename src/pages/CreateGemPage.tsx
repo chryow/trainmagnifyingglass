@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { useNavigate, useRoute, matchPath } from '@/lib/router';
+import { useNavigate, useRoute } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { LoadingSpinner, ErrorState } from '@/components/States';
-import { uploadGemImage, validateImageFile } from '@/lib/upload';
-import type { Community, Category, Gem, GemStatus } from '@/types/database';
-import { ArrowLeft, Save, Send, ImagePlus, X, MapPin, Sparkles, Search } from 'lucide-react';
+import { validateImageFile } from '@/lib/upload';
+import type { Community, Category, GemStatus } from '@/types/database';
+import { ArrowLeft, Save, Send, ImagePlus, X } from 'lucide-react';
 
 export default function CreateGemPage() {
   const route = useRoute();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const preselectCommunity = matchPath('/gems/new', route.path)?.id ?? route.params.community ?? '';
+  const preselectCommunity = route.params.community ?? '';
 
   const [communities, setCommunities] = useState<Community[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -26,12 +26,9 @@ export default function CreateGemPage() {
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [coverPath, setCoverPath] = useState<string | null>(null);
-  const [status, setStatus] = useState<GemStatus>('draft');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [editingGem, setEditingGem] = useState<Gem | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -54,52 +51,16 @@ export default function CreateGemPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Load existing gem for editing
-  useEffect(() => {
-    if (!route.params.id) return;
-    supabase.from('gems').select('*').eq('id', route.params.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const g = data as Gem;
-          setEditingGem(g);
-          setCommunityId(g.community_id);
-          setCategoryId(g.category_id ?? '');
-          setTitle(g.title);
-          setPlaceName(g.place_name);
-          setArea(g.area ?? '');
-          setAddress(g.address ?? '');
-          setDescription(g.description ?? '');
-          setCoverImage(g.cover_image_url);
-          setStatus(g.status);
-        }
-      });
-  }, [route.params.id]);
-
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const err = validateImageFile(file);
     if (err) { setImageError(err); return; }
     setImageError(null);
-
-    // If editing existing gem, upload directly
-    if (editingGem) {
-      try {
-        const { url, path } = await uploadGemImage(editingGem.id, file);
-        setCoverImage(url);
-        setCoverPath(path);
-        await supabase.from('gems').update({ cover_image_url: url }).eq('id', editingGem.id);
-      } catch {
-        setImageError('Upload failed. Please try again.');
-      }
-    } else {
-      // For new gems, create object URL as preview; actual upload after save
-      setCoverImage(URL.createObjectURL(file));
-    }
+    setCoverImage(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e: FormEvent, publishStatus: GemStatus) => {
-    e.preventDefault();
+  const handleSubmit = async (publishStatus: GemStatus) => {
     if (saving || !profile) return;
     if (title.trim().length < 3) { setError('Title must be at least 3 characters.'); return; }
     if (!placeName.trim()) { setError('Place name is required.'); return; }
@@ -122,25 +83,14 @@ export default function CreateGemPage() {
         status: publishStatus,
       };
 
-      if (editingGem) {
-        const { error: updErr } = await supabase.from('gems').update(payload).eq('id', editingGem.id);
-        if (updErr) {
-          if (updErr.code === '23505') setError('You already have a published gem for this place in this community.');
-          else setError(updErr.message);
-          setSaving(false);
-          return;
-        }
-        navigate(`/gems/${editingGem.id}`);
-      } else {
-        const { data, error: insErr } = await supabase.from('gems').insert(payload).select('id').single();
-        if (insErr) {
-          if (insErr.code === '23505') setError('You already have a published gem for this place in this community.');
-          else setError(insErr.message);
-          setSaving(false);
-          return;
-        }
-        navigate(`/gems/${data.id}`);
+      const { data, error: insErr } = await supabase.from('gems').insert(payload).select('id').single();
+      if (insErr) {
+        if (insErr.code === '23505') setError('You already have a published gem for this place in this community.');
+        else setError(insErr.message);
+        setSaving(false);
+        return;
       }
+      navigate(`/gems/${data.id}`);
     } catch {
       setError('Something went wrong. Please try again.');
       setSaving(false);
@@ -165,16 +115,15 @@ export default function CreateGemPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <button onClick={() => navigate(editingGem ? `/gems/${editingGem.id}` : '/discover')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400">
+      <button onClick={() => navigate('/discover')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400">
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
-      <PageHeader title={editingGem ? 'Edit gem' : 'Share a hidden gem'} subtitle={editingGem ? 'Update your recommendation.' : 'Recommend a lesser-known spot to your community.'} />
+      <PageHeader title="Share a hidden gem" subtitle="Recommend a lesser-known spot to your community." />
 
-      <form className="card space-y-5 p-6" noValidate>
-        {/* Community selection */}
+      <form className="card space-y-5 p-6" noValidate onSubmit={(e: FormEvent) => { e.preventDefault(); void handleSubmit('published'); }}>
         <div>
           <label htmlFor="community" className="label">Community</label>
-          <select id="community" className="input" value={communityId} onChange={(e) => setCommunityId(e.target.value)} disabled={!!editingGem}>
+          <select id="community" className="input" value={communityId} onChange={(e) => setCommunityId(e.target.value)}>
             <option value="">Select a community…</option>
             {communities.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
@@ -182,19 +131,16 @@ export default function CreateGemPage() {
           </select>
         </div>
 
-        {/* Title */}
         <div>
           <label htmlFor="title" className="label">Title</label>
           <input id="title" className="input" placeholder="e.g. Best late-night coffee spot" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} />
         </div>
 
-        {/* Place name */}
         <div>
           <label htmlFor="placeName" className="label">Place name</label>
           <input id="placeName" className="input" placeholder="e.g. Warung Kopi Senja" value={placeName} onChange={(e) => setPlaceName(e.target.value)} maxLength={200} />
         </div>
 
-        {/* Category */}
         <div>
           <label htmlFor="category" className="label">Category <span className="text-stone-400">(optional)</span></label>
           <select id="category" className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -205,7 +151,6 @@ export default function CreateGemPage() {
           </select>
         </div>
 
-        {/* Area + Address */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="area" className="label">Area <span className="text-stone-400">(optional)</span></label>
@@ -217,19 +162,17 @@ export default function CreateGemPage() {
           </div>
         </div>
 
-        {/* Description */}
         <div>
           <label htmlFor="description" className="label">Description <span className="text-stone-400">(optional)</span></label>
           <textarea id="description" className="input min-h-[100px] resize-y" placeholder="What makes this place special? Why is it a hidden gem?" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} />
         </div>
 
-        {/* Cover image */}
         <div>
           <span className="label">Cover image <span className="text-stone-400">(optional)</span></span>
           {coverImage ? (
             <div className="relative overflow-hidden rounded-xl">
               <img src={coverImage} alt="Cover preview" className="h-48 w-full object-cover" />
-              <button type="button" onClick={() => { setCoverImage(null); setCoverPath(null); }} className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80">
+              <button type="button" onClick={() => setCoverImage(null)} className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -245,13 +188,12 @@ export default function CreateGemPage() {
 
         {error && <div role="alert" className="rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{error}</div>}
 
-        {/* Actions */}
         <div className="flex gap-3">
-          <button type="button" onClick={() => navigate(editingGem ? `/gems/${editingGem.id}` : '/discover')} className="btn-secondary">Cancel</button>
-          <button type="submit" disabled={saving} onClick={(e) => handleSubmit(e as unknown as FormEvent, 'draft')} className="btn-outline flex-1">
+          <button type="button" onClick={() => navigate('/discover')} className="btn-secondary">Cancel</button>
+          <button type="button" disabled={saving} onClick={() => void handleSubmit('draft')} className="btn-outline flex-1">
             {saving ? <LoadingSpinner size={16} /> : <><Save className="h-4 w-4" /> Save draft</>}
           </button>
-          <button type="submit" disabled={saving} onClick={(e) => handleSubmit(e as unknown as FormEvent, 'published')} className="btn-primary flex-1">
+          <button type="submit" disabled={saving} className="btn-primary flex-1">
             {saving ? <LoadingSpinner size={16} /> : <><Send className="h-4 w-4" /> Publish</>}
           </button>
         </div>
