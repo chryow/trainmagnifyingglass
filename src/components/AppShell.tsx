@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Logo } from '@/components/Logo';
 import { useTheme } from '@/lib/theme';
 import type { ReactNode } from 'react';
 import { Compass, Layers, Plus, Bell, User as UserIcon, Map, Users, Heart, Moon, Sun, LogOut, Shield, Ban } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface NavItem {
   label: string;
@@ -39,6 +41,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const route = useRoute();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    supabase.rpc('is_platform_admin').then(({ data }) => setIsAdmin(!!data));
+  }, [profile]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -76,6 +84,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+
+        {isAdmin && (
+          <div className="mb-2 mt-2">
+            <button
+              onClick={() => navigate('/admin')}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive(route.path, ['/admin'])
+                  ? 'bg-error-50 text-error-700 dark:bg-error-900/30 dark:text-error-300'
+                  : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800'
+              }`}
+            >
+              <Shield className="h-5 w-5" />
+              Admin Panel
+            </button>
+          </div>
+        )}
 
         <div className="mt-auto space-y-1 border-t border-stone-200 pt-3 dark:border-stone-800">
           <button onClick={toggleTheme} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800">

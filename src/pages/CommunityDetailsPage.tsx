@@ -21,6 +21,7 @@ export default function CommunityDetailsPage() {
   const [error, setError] = useState(false);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [actioningMember, setActioningMember] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -107,6 +108,15 @@ export default function CommunityDetailsPage() {
     const { error: leaveErr } = await supabase.from('community_members').delete().eq('community_id', community.id).eq('user_id', profile.id);
     setLeaving(false);
     if (leaveErr) { setJoinError(leaveErr.message); return; }
+    await load();
+  };
+
+  const handleToggleModerator = async (member: CommunityMember) => {
+    if (!isOwner || actioningMember) return;
+    const newRole = member.role === 'moderator' ? 'member' : 'moderator';
+    setActioningMember(member.id);
+    await supabase.from('community_members').update({ role: newRole }).eq('id', member.id);
+    setActioningMember(null);
     await load();
   };
 
@@ -235,14 +245,26 @@ export default function CommunityDetailsPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {members.map((m) => (
-              <button key={m.id} onClick={() => navigate(`/profile/${m.user_id}`)} className="flex items-center gap-3 rounded-xl p-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800">
-                <Avatar url={m.profile?.avatar_url ?? null} name={m.profile?.display_name ?? 'User'} size={40} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{m.profile?.display_name}</p>
-                  <p className="truncate text-xs text-stone-400">@{m.profile?.username}</p>
-                </div>
-                {m.role === 'moderator' && <span className="ml-auto badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"><Shield className="h-3 w-3" /> Mod</span>}
-              </button>
+              <div key={m.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-stone-50 dark:hover:bg-stone-800">
+                <button onClick={() => navigate(`/profile/${m.user_id}`)} className="flex flex-1 items-center gap-3 text-left">
+                  <Avatar url={m.profile?.avatar_url ?? null} name={m.profile?.display_name ?? 'User'} size={40} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{m.profile?.display_name}</p>
+                    <p className="truncate text-xs text-stone-400">@{m.profile?.username}</p>
+                  </div>
+                </button>
+                {m.role === 'moderator' && <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"><Shield className="h-3 w-3" /> Mod</span>}
+                {isOwner && m.user_id !== profile?.id && (
+                  <button
+                    onClick={() => handleToggleModerator(m)}
+                    disabled={actioningMember === m.id}
+                    className="btn-outline shrink-0 text-xs"
+                    title={m.role === 'moderator' ? 'Demote to member' : 'Promote to moderator'}
+                  >
+                    {actioningMember === m.id ? <LoadingSpinner size={14} /> : m.role === 'moderator' ? 'Demote' : 'Make mod'}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
