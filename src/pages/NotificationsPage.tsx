@@ -40,6 +40,22 @@ export default function NotificationsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (!profile) return;
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${profile.id}` },
+        () => { load(); }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${profile.id}` },
+        () => { load(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [profile]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAllRead = async () => {
@@ -57,14 +73,23 @@ export default function NotificationsPage() {
     handleNavigate(n);
   };
 
-  const handleNavigate = (n: AppNotification) => {
-    if (n.type === 'follow' && n.actor) navigate(`/profile/${n.actor.id}`);
-    else if (n.type === 'comment' || n.type === 'gem_reaction') {
-      if (n.entity_id) navigate(`/gems/${n.entity_id}`);
-    } else if (n.type === 'reply') {
-      if (n.entity_id) navigate(`/gems/${n.entity_id}`);
+  const handleNavigate = async (n: AppNotification) => {
+    if (n.type === 'follow' && n.actor) {
+      const { data: prof } = await supabase.from('profiles').select('id').eq('id', n.actor.id).maybeSingle();
+      if (!prof) { setError(true); return; }
+      navigate(`/profile/${n.actor.id}`);
+    } else if (n.type === 'comment' || n.type === 'gem_reaction' || n.type === 'reply' ||
+      n.type === 'correction_accepted' || n.type === 'correction_rejected' ||
+      n.type === 'correction_needs_info' || n.type === 'correction_escalated') {
+      if (!n.entity_id) return;
+      const { data: gem } = await supabase.from('gems').select('id').eq('id', n.entity_id).maybeSingle();
+      if (!gem) return;
+      navigate(`/gems/${n.entity_id}`);
     } else if (n.type === 'collection_add') {
-      if (n.entity_id) navigate(`/collections/${n.entity_id}`);
+      if (!n.entity_id) return;
+      const { data: coll } = await supabase.from('collections').select('id').eq('id', n.entity_id).maybeSingle();
+      if (!coll) return;
+      navigate(`/collections/${n.entity_id}`);
     }
   };
 

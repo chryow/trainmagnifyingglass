@@ -307,10 +307,10 @@ function ConfirmAction({
 
           <div>
             <label className="label">Evidence photo (optional)</label>
-            {evidenceUrl ? (
+            {evidencePreview ? (
               <div className="relative overflow-hidden rounded-lg">
-                <img src={evidenceUrl} alt="Evidence" className="h-32 w-full object-cover" />
-                <button type="button" onClick={() => setEvidenceUrl(null)} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white">
+                <img src={evidencePreview} alt="Evidence" className="h-32 w-full object-cover" />
+                <button type="button" onClick={() => { setEvidenceFile(null); setEvidencePreview(null); }} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -318,7 +318,7 @@ function ConfirmAction({
               <label className="flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed border-stone-300 p-3 text-stone-500 dark:border-stone-700">
                 <ImagePlus className="h-5 w-5" />
                 <span className="text-xs">Upload evidence</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleEvidenceUpload} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleEvidenceSelect} />
               </label>
             )}
             {imageError && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{imageError}</p>}
@@ -360,23 +360,20 @@ function CorrectAction({
   const [currentValue, setCurrentValue] = useState('');
   const [suggestedValue, setSuggestedValue] = useState('');
   const [explanation, setExplanation] = useState('');
-  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
 
-  const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !gem) return;
     const err = validateImageFile(file);
     if (err) { setImageError(err); return; }
     setImageError(null);
-    try {
-      const { url } = await uploadGemImage(gem.id, file);
-      setEvidenceUrl(url);
-    } catch {
-      setImageError('Upload failed.');
-    }
+    setEvidenceFile(file);
+    setEvidencePreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async () => {
@@ -385,26 +382,37 @@ function CorrectAction({
     if (explanation.trim().length < 10) { setError('Explanation must be at least 10 characters.'); return; }
     setSubmitting(true);
     setError(null);
-    const { error: insErr } = await supabase.from('correction_suggestions').insert({
+    const { data, error: insErr } = await supabase.from('correction_suggestions').insert({
       gem_id: gem.id,
       suggested_by: profile.id,
       correction_type: correctionType,
       current_value: currentValue.trim() || null,
       suggested_value: suggestedValue.trim(),
       explanation: explanation.trim(),
-      evidence_url: evidenceUrl,
-    });
-    setSubmitting(false);
-    if (insErr) {
-      if (insErr.code === '23505') setError('A pending correction with the same type and suggested value already exists.');
-      else setError(insErr.message);
+    }).select('id').single();
+    if (insErr || !data) {
+      setSubmitting(false);
+      if (insErr?.code === '23505') setError('A pending correction with the same type and suggested value already exists.');
+      else setError(insErr?.message ?? 'Failed to submit correction');
       return;
     }
+
+    if (evidenceFile) {
+      try {
+        const result = await uploadCorrectionEvidence(gem.id, data.id, evidenceFile);
+        await supabase.from('correction_suggestions').update({ evidence_url: result.path }).eq('id', data.id);
+      } catch {
+        setImageError('Evidence upload failed, but your correction was submitted.');
+      }
+    }
+
+    setSubmitting(false);
     setCorrectionType('name');
     setCurrentValue('');
     setSuggestedValue('');
     setExplanation('');
-    setEvidenceUrl(null);
+    setEvidenceFile(null);
+    setEvidencePreview(null);
     onSubmitted();
   };
 
@@ -447,10 +455,10 @@ function CorrectAction({
 
           <div>
             <label className="label">Evidence (optional)</label>
-            {evidenceUrl ? (
+            {evidencePreview ? (
               <div className="relative overflow-hidden rounded-lg">
-                <img src={evidenceUrl} alt="Evidence" className="h-32 w-full object-cover" />
-                <button type="button" onClick={() => setEvidenceUrl(null)} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white">
+                <img src={evidencePreview} alt="Evidence" className="h-32 w-full object-cover" />
+                <button type="button" onClick={() => { setEvidenceFile(null); setEvidencePreview(null); }} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -458,7 +466,7 @@ function CorrectAction({
               <label className="flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed border-stone-300 p-3 text-stone-500 dark:border-stone-700">
                 <ImagePlus className="h-5 w-5" />
                 <span className="text-xs">Upload evidence</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleEvidenceUpload} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleEvidenceSelect} />
               </label>
             )}
             {imageError && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{imageError}</p>}
@@ -551,7 +559,7 @@ function CorrectionReview({
                   <span className="text-stone-600 dark:text-stone-300">{c.explanation}</span>
                 </div>
                 {c.evidence_url && (
-                  <a href={c.evidence_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline dark:text-primary-400">View evidence</a>
+                  <EvidenceLink path={c.evidence_url} />
                 )}
               </div>
 
@@ -621,9 +629,7 @@ function ConfirmationList({ confirmations, loading }: { confirmations: GemConfir
               </div>
               {c.note && <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{c.note}</p>}
               {c.evidence_image_url && (
-                <a href={c.evidence_image_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
-                  <img src={c.evidence_image_url} alt="Evidence" className="h-16 w-16 rounded-lg object-cover" />
-                </a>
+                <EvidenceThumb path={c.evidence_image_url} />
               )}
             </div>
           </div>
@@ -710,6 +716,44 @@ function EditHistoryItem({ entry }: { entry: GemEditHistory }) {
       </div>
       {entry.reason && <p className="mt-1 text-xs text-stone-400">{entry.reason}</p>}
     </div>
+  );
+}
+
+function EvidenceLink({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getEvidenceSignedUrl(path)
+      .then((signed) => { if (!cancelled) { setUrl(signed); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [path]);
+
+  if (loading) return <span className="text-xs text-stone-400">Loading evidence…</span>;
+  if (!url) return null;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline dark:text-primary-400">View evidence</a>
+  );
+}
+
+function EvidenceThumb({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getEvidenceSignedUrl(path)
+      .then((signed) => { if (!cancelled) setUrl(signed); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [path]);
+
+  if (!url) return null;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
+      <img src={url} alt="Evidence" className="h-16 w-16 rounded-lg object-cover" />
+    </a>
   );
 }
 
