@@ -16,6 +16,10 @@ export function validateImageFile(file: File): string | null {
   if (file.size > MAX_FILE_SIZE) {
     return 'Image must be 5 MB or smaller.';
   }
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+    return 'File extension does not match an allowed image type.';
+  }
   return null;
 }
 
@@ -36,5 +40,75 @@ export async function uploadGemImage(gemId: string, file: File): Promise<UploadR
 
 export async function deleteGemImage(path: string): Promise<void> {
   const { error } = await supabase.storage.from('gem-images').remove([path]);
+  if (error) throw error;
+}
+
+// Evidence uploads — private bucket, signed URLs
+
+export interface EvidenceUploadResult {
+  path: string;
+  signedUrl: string;
+}
+
+async function uploadEvidence(
+  category: 'confirmations' | 'corrections' | 'reports',
+  gemId: string | null,
+  entityId: string,
+  file: File,
+): Promise<EvidenceUploadResult> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const path = gemId
+    ? `${category}/${gemId}/${entityId}/${filename}`
+    : `${category}/${entityId}/${filename}`;
+
+  const { error } = await supabase.storage
+    .from('gem-evidence')
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) throw error;
+
+  const { data, error: signErr } = await supabase.storage
+    .from('gem-evidence')
+    .createSignedUrl(path, 3600);
+
+  if (signErr || !data?.signedUrl) throw signErr ?? new Error('Failed to create signed URL');
+
+  return { path, signedUrl: data.signedUrl };
+}
+
+export async function uploadConfirmationEvidence(
+  gemId: string,
+  confirmationId: string,
+  file: File,
+): Promise<EvidenceUploadResult> {
+  return uploadEvidence('confirmations', gemId, confirmationId, file);
+}
+
+export async function uploadCorrectionEvidence(
+  gemId: string,
+  correctionId: string,
+  file: File,
+): Promise<EvidenceUploadResult> {
+  return uploadEvidence('corrections', gemId, correctionId, file);
+}
+
+export async function uploadReportEvidence(
+  reportId: string,
+  file: File,
+): Promise<EvidenceUploadResult> {
+  return uploadEvidence('reports', null, reportId, file);
+}
+
+export async function getEvidenceSignedUrl(path: string, expiresIn = 3600): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from('gem-evidence')
+    .createSignedUrl(path, expiresIn);
+  if (error || !data?.signedUrl) throw error ?? new Error('Failed to create signed URL');
+  return data.signedUrl;
+}
+
+export async function deleteEvidence(path: string): Promise<void> {
+  const { error } = await supabase.storage.from('gem-evidence').remove([path]);
   if (error) throw error;
 }

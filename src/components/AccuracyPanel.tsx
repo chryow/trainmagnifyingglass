@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Avatar } from '@/components/Avatar';
 import { LoadingSpinner, EmptyState } from '@/components/States';
-import { uploadGemImage, validateImageFile } from '@/lib/upload';
+import { uploadConfirmationEvidence, uploadCorrectionEvidence, getEvidenceSignedUrl, validateImageFile } from '@/lib/upload';
 import type {
   Gem, GemConfirmation, CorrectionSuggestion, GemEditHistory,
   ConfirmationType, CorrectionType, CorrectionStatus,
@@ -185,46 +185,56 @@ function ConfirmAction({
   const { profile } = useAuth();
   const [type, setType] = useState<ConfirmationType>('still_accurate');
   const [note, setNote] = useState('');
-  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
 
   const myActiveConfirmation = confirmations.find((c) => c.user_id === profile?.id && !c.withdrawn_at);
 
-  const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !gem) return;
     const err = validateImageFile(file);
     if (err) { setImageError(err); return; }
     setImageError(null);
-    try {
-      const { url } = await uploadGemImage(gem.id, file);
-      setEvidenceUrl(url);
-    } catch {
-      setImageError('Upload failed. Please try again.');
-    }
+    setEvidenceFile(file);
+    setEvidencePreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async () => {
     if (!profile || submitting) return;
     setSubmitting(true);
     setError(null);
-    const { error: insErr } = await supabase.from('gem_confirmations').insert({
+    const { data, error: insErr } = await supabase.from('gem_confirmations').insert({
       gem_id: gem.id,
       user_id: profile.id,
       confirmation_type: type,
       note: note.trim() || null,
-      evidence_image_url: evidenceUrl,
-    });
-    setSubmitting(false);
-    if (insErr) {
-      if (insErr.code === '23505') setError('You already have an active confirmation for this gem. Withdraw it first.');
-      else setError(insErr.message);
+    }).select('id').single();
+    if (insErr || !data) {
+      setSubmitting(false);
+      if (insErr?.code === '23505') setError('You already have an active confirmation for this gem. Withdraw it first.');
+      else setError(insErr?.message ?? 'Failed to submit confirmation');
       return;
     }
+
+    let evidencePath: string | null = null;
+    if (evidenceFile) {
+      try {
+        const result = await uploadConfirmationEvidence(gem.id, data.id, evidenceFile);
+        evidencePath = result.path;
+        await supabase.from('gem_confirmations').update({ evidence_image_url: evidencePath }).eq('id', data.id);
+      } catch {
+        setImageError('Evidence upload failed, but your confirmation was submitted.');
+      }
+    }
+
+    setSubmitting(false);
     setNote('');
-    setEvidenceUrl(null);
+    setEvidenceFile(null);
+    setEvidencePreview(null);
     onSubmitted();
   };
 
