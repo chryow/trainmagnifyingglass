@@ -109,8 +109,8 @@ function Router() {
     if (matchPath('/search', path)) return <SearchPage />;
 
     if (path === '/communities') return <CommunitiesPage />;
-    if (matchPath('/communities/:id', path)) return <CommunityDetailsPage />;
     if (path === '/communities/new') return <CreateCommunityPage />;
+    if (matchPath('/communities/:id', path)) return <CommunityDetailsPage />;
 
     if (path === '/gems/new') return <CreateGemPage />;
     if (matchPath('/gems/:id', path)) return <GemDetailsPage />;

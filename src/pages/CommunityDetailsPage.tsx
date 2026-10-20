@@ -29,7 +29,7 @@ export default function CommunityDetailsPage() {
   const [gems, setGems] = useState<Gem[]>([]);
 
   const load = useCallback(async () => {
-    if (!communityId || !profile) return;
+    if (!communityId || communityId === 'new' || !profile) return;
     setLoading(true);
     setError(false);
     try {
