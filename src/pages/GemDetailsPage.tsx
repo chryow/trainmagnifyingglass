@@ -6,12 +6,13 @@ import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { uploadGemImage, validateImageFile, deleteGemImage } from '@/lib/upload';
 import AccuracyPanel from '@/components/AccuracyPanel';
+import ReportModal from '@/components/ReportModal';
 import type { Gem, GemImage, Category, Comment, GemReaction, GemReactionType } from '@/types/database';
 import { GEM_REACTION_TYPES, GEM_REACTION_LABELS, GEM_REACTION_EMOJIS } from '@/types/database';
 import {
   ArrowLeft, MapPin, Edit3, Save, X, Trash2, Send, ImagePlus,
   Lock, Sparkles as SparkIcon, Calendar, Bookmark, MessageCircle,
-  Heart, ChevronDown, Reply, CornerDownRight
+  Heart, ChevronDown, Reply, CornerDownRight, Flag
 } from 'lucide-react';
 
 export default function GemDetailsPage() {
@@ -49,6 +50,7 @@ export default function GemDetailsPage() {
   const [replyBody, setReplyBody] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [showReport, setShowReport] = useState(false);
 
   const load = useCallback(async () => {
     if (!gemId || !profile) return;
@@ -389,6 +391,11 @@ export default function GemDetailsPage() {
             <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
             {isSaved ? 'Saved' : 'Save'}
           </button>
+          {!isAuthor && (
+            <button onClick={() => setShowReport(true)} className="btn-outline" title="Report this gem">
+              <Flag className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

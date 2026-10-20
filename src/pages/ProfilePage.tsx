@@ -4,8 +4,9 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
+import ReportModal from '@/components/ReportModal';
 import type { Community, Profile, UserInterest, Gem, Collection, Follow } from '@/types/database';
-import { MapPin, Calendar, Pencil, Settings, Layers, Compass, Users, ArrowLeft, Bookmark, UserPlus, UserCheck, Map } from 'lucide-react';
+import { MapPin, Calendar, Pencil, Settings, Layers, Compass, Users, ArrowLeft, Bookmark, UserPlus, UserCheck, Map, Ban, Flag } from 'lucide-react';
 
 export default function ProfilePage() {
   const route = useRoute();
@@ -29,6 +30,9 @@ export default function ProfilePage() {
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<'about' | 'gems' | 'collections' | 'saved' | 'communities' | 'following' | 'followers'>('about');
   const [followAction, setFollowAction] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockAction, setBlockAction] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const load = useCallback(async () => {
     if (!targetId || !myProfile) return;
@@ -82,13 +86,12 @@ export default function ProfilePage() {
 
       // Is current user following this person?
       if (!isSelf) {
-        const { data: myFollow } = await supabase
-          .from('follows')
-          .select('id')
-          .eq('follower_id', myProfile.id)
-          .eq('followee_id', targetId)
-          .maybeSingle();
+        const [myFollow, myBlock] = await Promise.all([
+          supabase.from('follows').select('id').eq('follower_id', myProfile.id).eq('followee_id', targetId).maybeSingle(),
+          supabase.from('blocked_users').select('id').eq('blocker_id', myProfile.id).eq('blocked_id', targetId).maybeSingle(),
+        ]);
         setIsFollowing(!!myFollow);
+        setIsBlocked(!!myBlock);
       }
     } catch {
       setError(true);
@@ -112,6 +115,27 @@ export default function ProfilePage() {
       setFollowers((prev) => [...prev, { id: 'temp', follower_id: myProfile.id, followee_id: profile.id, created_at: new Date().toISOString(), follower: { id: myProfile.id, username: myProfile.username, display_name: myProfile.display_name, avatar_url: myProfile.avatar_url } }]);
     }
     setFollowAction(false);
+  };
+
+  const handleToggleBlock = async () => {
+    if (!profile || !myProfile || isSelf) return;
+    setBlockAction(true);
+    if (isBlocked) {
+      const { error: rpcErr } = await supabase.rpc('unblock_user', { p_blocked_user_id: profile.id });
+      if (!rpcErr) setIsBlocked(false);
+    } else {
+      if (!confirm(`Block ${profile.display_name}? They won't be able to follow you or reply to your content.`)) {
+        setBlockAction(false);
+        return;
+      }
+      const { error: rpcErr } = await supabase.rpc('block_user', { p_blocked_user_id: profile.id });
+      if (!rpcErr) {
+        setIsBlocked(true);
+        setIsFollowing(false);
+        setFollowers((prev) => prev.filter((f) => f.follower_id !== myProfile.id));
+      }
+    }
+    setBlockAction(false);
   };
 
   if (loading) {
@@ -159,6 +183,16 @@ export default function ProfilePage() {
                   {followAction ? <LoadingSpinner size={16} /> : isFollowing ? <><UserCheck className="h-4 w-4" /> Following</> : <><UserPlus className="h-4 w-4" /> Follow</>}
                 </button>
               ) : null}
+              {!isSelf && (
+                <>
+                  <button onClick={() => setShowReport(true)} className="btn-outline" title="Report">
+                    <Flag className="h-4 w-4" />
+                  </button>
+                  <button onClick={handleToggleBlock} disabled={blockAction} className={isBlocked ? 'btn-outline' : 'btn-outline'} title={isBlocked ? 'Unblock' : 'Block'}>
+                    {blockAction ? <LoadingSpinner size={16} /> : <Ban className={`h-4 w-4 ${isBlocked ? 'text-error-500' : ''}`} />}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -333,6 +367,15 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+      )}
+
+      {showReport && profile && (
+        <ReportModal
+          targetType="profile"
+          targetId={profile.id}
+          onClose={() => setShowReport(false)}
+          onSubmitted={() => setShowReport(false)}
+        />
       )}
     </div>
   );

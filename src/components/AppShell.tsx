@@ -3,7 +3,7 @@ import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Logo } from '@/components/Logo';
 import { useTheme } from '@/lib/theme';
 import type { ReactNode } from 'react';
-import { Compass, Layers, Plus, Bell, User as UserIcon, Map, Users, Heart, Moon, Sun, LogOut } from 'lucide-react';
+import { Compass, Layers, Plus, Bell, User as UserIcon, Map, Users, Heart, Moon, Sun, LogOut, Shield, Ban } from 'lucide-react';
 
 interface NavItem {
   label: string;

@@ -25,6 +25,9 @@ import CollectionDetailsPage from '@/pages/CollectionDetailsPage';
 import CreateCollectionPage from '@/pages/CreateCollectionPage';
 import FollowingPage from '@/pages/FollowingPage';
 import NotificationsPage from '@/pages/NotificationsPage';
+import BlockedUsersPage from '@/pages/BlockedUsersPage';
+import ModeratorDashboardPage from '@/pages/ModeratorDashboardPage';
+import AdminPanelPage from '@/pages/AdminPanelPage';
 
 import { Map } from 'lucide-react';
 
@@ -94,6 +97,9 @@ function Router() {
 
     if (path === '/following') return <FollowingPage />;
     if (path === '/notifications') return <NotificationsPage />;
+    if (path === '/settings/blocked') return <BlockedUsersPage />;
+    if (matchPath('/moderation/:id', path)) return <ModeratorDashboardPage />;
+    if (path === '/admin') return <AdminPanelPage />;
 
     if (path === '/profile' || matchPath('/profile/:id', path)) return <ProfilePage />;
     if (path === '/profile/edit') return <EditProfilePage />;

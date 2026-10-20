@@ -373,3 +373,103 @@ export const CHANGE_SOURCE_LABELS: Record<ChangeSource, string> = {
   verification_calculation: 'Status Recalculation',
   system_update: 'System Update',
 };
+
+// ============================================================
+// Phase 5 — Safety & Moderation
+// ============================================================
+
+export interface BlockedUser {
+  id: string;
+  blocker_id: string;
+  blocked_id: string;
+  created_at: string;
+  blocked?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export type ReportTargetType = 'profile' | 'gem' | 'comment' | 'collection' | 'community';
+export type ReportReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate_content' | 'off_topic' | 'duplicate' | 'other';
+export type ReportStatus = 'pending' | 'reviewing' | 'resolved' | 'dismissed' | 'escalated';
+
+export const REPORT_REASONS: ReportReason[] = ['spam', 'harassment', 'misinformation', 'inappropriate_content', 'off_topic', 'duplicate', 'other'];
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  spam: 'Spam or repetitive content',
+  harassment: 'Harassment or bullying',
+  misinformation: 'Misinformation',
+  inappropriate_content: 'Inappropriate content',
+  off_topic: 'Off-topic content',
+  duplicate: 'Duplicate',
+  other: 'Other',
+};
+
+export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  pending: 'Pending',
+  reviewing: 'Under Review',
+  resolved: 'Resolved',
+  dismissed: 'Dismissed',
+  escalated: 'Escalated',
+};
+
+export interface Report {
+  id: string;
+  reporter_id: string;
+  target_type: ReportTargetType;
+  target_id: string;
+  community_id: string | null;
+  reason: ReportReason;
+  description: string | null;
+  evidence_path: string | null;
+  status: ReportStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  resolution_note: string | null;
+  escalation_reason: string | null;
+  escalated_by: string | null;
+  escalated_at: string | null;
+  created_at: string;
+  updated_at: string;
+  reporter?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export interface CommunitySuspension {
+  id: string;
+  community_id: string;
+  user_id: string;
+  suspended_by: string;
+  reason: string;
+  duration_hours: number | null;
+  expires_at: string | null;
+  lifted_by: string | null;
+  lifted_at: string | null;
+  lift_reason: string | null;
+  created_at: string;
+  user?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  suspended_by_user?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export type ModerationActionType = 'hide_gem' | 'restore_gem' | 'suspend_user' | 'lift_suspension' | 'escalate_report' | 'resolve_report' | 'deactivate_account' | 'reactivate_account' | 'dismiss_report';
+
+export const MODERATION_ACTION_LABELS: Record<ModerationActionType, string> = {
+  hide_gem: 'Hidden a gem',
+  restore_gem: 'Restored a gem',
+  suspend_user: 'Suspended a user',
+  lift_suspension: 'Lifted a suspension',
+  escalate_report: 'Escalated a report',
+  resolve_report: 'Resolved a report',
+  deactivate_account: 'Deactivated an account',
+  reactivate_account: 'Reactivated an account',
+  dismiss_report: 'Dismissed a report',
+};
+
+export interface ModerationAction {
+  id: string;
+  action_type: ModerationActionType;
+  target_type: string;
+  target_id: string;
+  moderator_id: string;
+  community_id: string | null;
+  reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  moderator?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}

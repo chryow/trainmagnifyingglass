@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { LoadingSpinner } from '@/components/States';
-import { ArrowLeft, Check, Shield, Eye, Users, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Check, Shield, Eye, Users, MessageSquare, Ban } from 'lucide-react';
 import type { ProfileVisibility } from '@/types/database';
 
 export default function PrivacySettingsPage() {
@@ -92,6 +92,11 @@ export default function PrivacySettingsPage() {
 
         <Section icon={<MessageSquare className="h-5 w-5" />} title="Comments">
           <ToggleRow label="Allow comments on my recommendations" checked={allowComments} onChange={(v) => { setAllowComments(v); markDirty(); }} />
+        </Section>
+
+        <Section icon={<Ban className="h-5 w-5" />} title="Blocked users">
+          <p className="text-sm text-stone-500 dark:text-stone-400">Manage people you've blocked.</p>
+          <button type="button" onClick={() => navigate('/settings/blocked')} className="mt-2 btn-outline text-sm">View blocked users</button>
         </Section>
 
         {error && <div role="alert" className="mx-5 my-3 rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{error}</div>}
