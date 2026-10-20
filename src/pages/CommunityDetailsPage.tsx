@@ -189,7 +189,11 @@ export default function CommunityDetailsPage() {
               <>
                 <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"><Shield className="h-3 w-3" /> Owner</span>
                 <button onClick={() => setShowInvite((s) => !s)} className="btn-outline"><KeyRound className="h-4 w-4" /> Invite</button>
+                <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
               </>
+            )}
+            {myMembership?.role === 'moderator' && !isOwner && (
+              <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
             )}
             {isMember && (
               <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-secondary"><Plus className="h-4 w-4" /> Add a gem</button>

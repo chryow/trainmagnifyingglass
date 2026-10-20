@@ -538,6 +538,16 @@ export default function GemDetailsPage() {
       )}
 
       {formError && <div role="alert" className="rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{formError}</div>}
+
+      {showReport && gem && (
+        <ReportModal
+          targetType="gem"
+          targetId={gem.id}
+          communityId={gem.community_id}
+          onClose={() => setShowReport(false)}
+          onSubmitted={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }
