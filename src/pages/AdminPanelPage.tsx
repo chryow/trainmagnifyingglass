@@ -207,25 +207,32 @@ export default function AdminPanelPage() {
           {reports.length === 0 ? (
             <EmptyState icon={<Flag className="h-6 w-6" />} title="No reports" description="No reports have been filed." />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {reports.map((r) => (
-                <div key={r.id} className="card flex items-center justify-between p-3">
-                  <div className="min-w-0">
+                <div key={r.id} className="card p-4">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`badge ${r.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : r.status === 'escalated' ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>
+                      <span className={`badge ${r.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:bg-amber-900/30 dark:text-amber-400' : r.status === 'escalated' ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>
                         {REPORT_STATUS_LABELS[r.status]}
                       </span>
                       <span className="text-xs text-stone-400">{REPORT_REASON_LABELS[r.reason]}</span>
                     </div>
-                    <p className="mt-1 text-xs text-stone-400 capitalize">{r.target_type} · {new Date(r.created_at).toLocaleDateString()}</p>
+                    <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                  </div>
+                  {r.description && <p className="mt-2 whitespace-pre-line text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  {r.escalation_reason && <p className="mt-2 rounded-lg bg-error-50 px-3 py-1.5 text-xs text-error-700 dark:bg-error-950/40 dark:text-error-400">Escalated: {r.escalation_reason}</p>}
+                  {r.resolution_note && <p className="mt-1 text-xs text-stone-400">Resolution: {r.resolution_note}</p>}
+                  <div className="mt-2 flex items-center gap-2 text-xs text-stone-400">
+                    <span className="capitalize">{r.target_type}</span>
+                    {r.community_id && <><span>·</span><span>Community report</span></>}
                   </div>
                   {(r.status === 'pending' || r.status === 'reviewing' || r.status === 'escalated') && (
-                    <div className="flex shrink-0 gap-1">
+                    <div className="mt-3 flex gap-2">
                       <button onClick={() => handleResolve(r.id, 'resolved')} disabled={actioning === r.id} className="btn-primary text-xs">
-                        {actioning === r.id ? <LoadingSpinner size={12} /> : <CheckCircle className="h-3 w-3" />}
+                        {actioning === r.id ? <LoadingSpinner size={14} /> : <><CheckCircle className="h-3.5 w-3.5" /> Resolve</>}
                       </button>
                       <button onClick={() => handleResolve(r.id, 'dismissed')} disabled={actioning === r.id} className="btn-outline text-xs">
-                        <XCircle className="h-3 w-3" />
+                        <XCircle className="h-3.5 w-3.5" /> Dismiss
                       </button>
                     </div>
                   )}

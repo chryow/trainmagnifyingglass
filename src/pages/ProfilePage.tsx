@@ -38,6 +38,8 @@ export default function ProfilePage() {
     if (!targetId || !myProfile) return;
     setLoading(true);
     setError(false);
+    setIsFollowing(false);
+    setIsBlocked(false);
     try {
       const { data: p, error: pErr } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle();
       if (pErr || !p) { setError(true); return; }
@@ -90,8 +92,8 @@ export default function ProfilePage() {
           supabase.from('follows').select('id').eq('follower_id', myProfile.id).eq('followee_id', targetId).maybeSingle(),
           supabase.from('blocked_users').select('id').eq('blocker_id', myProfile.id).eq('blocked_id', targetId).maybeSingle(),
         ]);
-        setIsFollowing(!!myFollow);
-        setIsBlocked(!!myBlock);
+        setIsFollowing(!!myFollow.data);
+        setIsBlocked(!!myBlock.data);
       }
     } catch {
       setError(true);

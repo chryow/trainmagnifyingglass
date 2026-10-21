@@ -25,22 +25,20 @@ export default function CreateCommunityPage() {
     if (name.trim().length < 3) { setError('Name must be at least 3 characters.'); return; }
     setLoading(true);
     setError(null);
-    const { data, error: insertErr } = await supabase
-      .from('communities')
-      .insert({
-        name: name.trim(),
-        description: description.trim() || null,
-        community_type: communityType,
-        visibility,
-        general_area: generalArea.trim() || null,
-        guidelines: guidelines.trim() || null,
-        owner_id: profile.id,
-      })
-      .select('id')
-      .single();
+    const { data, error: rpcErr } = await supabase.rpc('create_community', {
+      p_name: name.trim(),
+      p_description: description.trim() || null,
+      p_community_type: communityType,
+      p_visibility: visibility,
+      p_general_area: generalArea.trim() || null,
+      p_guidelines: guidelines.trim() || null,
+    });
     setLoading(false);
-    if (insertErr || !data) { setError(insertErr?.message ?? 'Failed to create community'); return; }
-    navigate(`/communities/${data.id}`);
+    if (rpcErr || !data?.success) {
+      setError(rpcErr?.message ?? data?.error ?? 'Failed to create community');
+      return;
+    }
+    navigate(`/communities/${data.community_id}`);
   };
 
   const types: { value: CommunityType; label: string; icon: typeof MapPin }[] = [
