@@ -17,6 +17,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import EditProfilePage from '@/pages/EditProfilePage';
 import PrivacySettingsPage from '@/pages/PrivacySettingsPage';
 import PlaceholderPage from '@/pages/PlaceholderPage';
+import ExplorePage from '@/pages/ExplorePage';
 import CreateGemPage from '@/pages/CreateGemPage';
 import GemDetailsPage from '@/pages/GemDetailsPage';
 import SearchPage from '@/pages/SearchPage';
@@ -38,7 +39,7 @@ import ContentGuidelinesPage from '@/pages/policy/ContentGuidelinesPage';
 import DeletionInfoPage from '@/pages/policy/DeletionInfoPage';
 import SupportPage from '@/pages/policy/SupportPage';
 
-import { Map } from 'lucide-react';
+
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/', '/login', '/register', '/reset-password',
@@ -105,7 +106,7 @@ function Router() {
     // Main app routes
     if (path === '/discover') return <DiscoverPage />;
 
-    if (path === '/explore') return <PlaceholderPage title="Explore" description="The full explore screen with filters and sorting will arrive in a future phase." icon={Map} />;
+    if (path === '/explore') return <ExplorePage />;
     if (matchPath('/search', path)) return <SearchPage />;
 
     if (path === '/communities') return <CommunitiesPage />;

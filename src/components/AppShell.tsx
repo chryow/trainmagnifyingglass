@@ -25,6 +25,7 @@ const MOBILE_NAV: NavItem[] = [
 const DESKTOP_NAV: NavItem[] = [
   { label: 'Discover', path: '/discover', icon: Compass, matchPatterns: ['/discover'] },
   { label: 'Explore', path: '/explore', icon: Map, matchPatterns: ['/explore', '/search'] },
+  { label: 'Add Gem', path: '/gems/new', icon: Plus, matchPatterns: ['/gems/new'] },
   { label: 'Collections', path: '/collections', icon: Layers, matchPatterns: ['/collections', '/collections/:id'] },
   { label: 'Following', path: '/following', icon: Heart, matchPatterns: ['/following'] },
   { label: 'Notifications', path: '/notifications', icon: Bell, matchPatterns: ['/notifications'] },
