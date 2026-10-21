@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Hidden Gems"
+description = "A community discovery app where people recommend overlooked places, local experiences, and quiet discoveries, organize collections, and connect with local communities."
+version = "1.0.0"
+id = "artifacts/hidden-gems"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21074
+
+[services.development]
+run = "pnpm --filter @workspace/hidden-gems run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hidden-gems", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hidden-gems/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21074"
+BASE_PATH = "/"
