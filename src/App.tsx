@@ -13,6 +13,7 @@ import DiscoverPage from '@/pages/DiscoverPage';
 import CommunitiesPage from '@/pages/CommunitiesPage';
 import CommunityDetailsPage from '@/pages/CommunityDetailsPage';
 import CreateCommunityPage from '@/pages/CreateCommunityPage';
+import EditCommunityPage from '@/pages/EditCommunityPage';
 import ProfilePage from '@/pages/ProfilePage';
 import EditProfilePage from '@/pages/EditProfilePage';
 import PrivacySettingsPage from '@/pages/PrivacySettingsPage';
@@ -111,6 +112,7 @@ function Router() {
 
     if (path === '/communities') return <CommunitiesPage />;
     if (path === '/communities/new') return <CreateCommunityPage />;
+    if (matchPath('/communities/:id/edit', path)) return <EditCommunityPage />;
     if (matchPath('/communities/:id', path)) return <CommunityDetailsPage />;
 
     if (path === '/gems/new') return <CreateGemPage />;
@@ -126,11 +128,11 @@ function Router() {
     if (matchPath('/moderation/:id', path)) return <ModeratorDashboardPage />;
     if (path === '/admin') return <AdminPanelPage />;
 
-    if (path === '/profile' || matchPath('/profile/:id', path)) return <ProfilePage />;
     if (path === '/profile/edit') return <EditProfilePage />;
-    if (path === '/settings') return <PrivacySettingsPage />;
+    if (path === '/profile' || matchPath('/profile/:id', path)) return <ProfilePage />;
     if (path === '/settings/password') return <ChangePasswordPage />;
     if (path === '/settings/delete-account') return <DeleteAccountPage />;
+    if (path === '/settings') return <PrivacySettingsPage />;
 
     return <PlaceholderPage title="Page not found" description="This page doesn't exist yet or may have moved." backTo="/discover" />;
   };

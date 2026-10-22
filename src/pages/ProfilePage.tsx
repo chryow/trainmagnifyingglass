@@ -14,8 +14,9 @@ export default function ProfilePage() {
   const { profile: myProfile } = useAuth();
 
   const match = matchPath('/profile/:id', route.path);
-  const targetId = match?.id ?? myProfile?.id ?? '';
-  const isSelf = !match || match.id === myProfile?.id;
+  const RESERVED_SEGMENTS = ['edit', 'settings', 'password', 'delete-account'];
+  const targetId = match && !RESERVED_SEGMENTS.includes(match.id) ? match.id : (myProfile?.id ?? '');
+  const isSelf = !match || match.id === myProfile?.id || RESERVED_SEGMENTS.includes(match?.id ?? '');
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [interests, setInterests] = useState<UserInterest[]>([]);
