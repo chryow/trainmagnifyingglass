@@ -133,8 +133,17 @@ export default function NotificationsPage() {
       <PageHeader
         title="Notifications"
         subtitle={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : "You're all caught up"}
-        action={unreadCount > 0 ? <button onClick={handleMarkAllRead} disabled={markingAll} className="btn-outline text-sm">{markingAll ? <LoadingSpinner size={16} /> : <><Check className="h-4 w-4" /> Mark all read</>}</button> : undefined}
+        action={
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/settings')} className="btn-ghost text-sm">Preferences</button>
+            {unreadCount > 0 && <button onClick={handleMarkAllRead} disabled={markingAll} className="btn-outline text-sm">{markingAll ? <LoadingSpinner size={16} /> : <><Check className="h-4 w-4" /> Mark all read</>}</button>}
+          </div>
+        }
       />
+
+      <p className="text-sm text-stone-500 dark:text-stone-400">
+        Your activity inbox — comments, reactions, follows, collection adds, and correction updates all appear here.
+      </p>
 
       {unavailableId && (
         <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -144,7 +153,7 @@ export default function NotificationsPage() {
       )}
 
       {notifications.length === 0 ? (
-        <EmptyState icon={<Bell className="h-6 w-6" />} title="No notifications yet" description="You'll be notified when someone comments on your gems, reacts, or follows you." />
+        <EmptyState icon={<Bell className="h-6 w-6" />} title="No notifications yet" description="You'll be notified here when someone comments on your gems, reacts, follows you, or adds your gem to a collection. You can adjust which notifications you receive in your preferences." action={<button onClick={() => navigate('/settings')} className="btn-outline">Notification preferences</button>} />
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => (

@@ -222,11 +222,13 @@ export default function AdminPanelPage() {
                     </div>
                     <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
-                  {r.description && <p className="mt-2 whitespace-pre-line text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  {r.description && <p className="mt-2 whitespace-pre-line break-words text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  <ReportTargetInfo targetType={r.target_type} targetId={r.target_id} />
                   {r.escalation_reason && <p className="mt-2 rounded-lg bg-error-50 px-3 py-1.5 text-xs text-error-700 dark:bg-error-950/40 dark:text-error-400">Escalated: {r.escalation_reason}</p>}
                   {r.resolution_note && <p className="mt-1 text-xs text-stone-400">Resolution: {r.resolution_note}</p>}
                   <div className="mt-2 flex items-center gap-2 text-xs text-stone-400">
                     <span className="capitalize">{r.target_type}</span>
+                    {r.reporter && <><span>·</span><Avatar url={r.reporter.avatar_url ?? null} name={r.reporter.display_name} size={16} /><span>{r.reporter.display_name}</span></>}
                     {r.community_id && <><span>·</span><span>Community report</span></>}
                   </div>
                   {(r.status === 'pending' || r.status === 'reviewing' || r.status === 'escalated') && (

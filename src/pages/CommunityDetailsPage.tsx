@@ -212,7 +212,7 @@ export default function CommunityDetailsPage() {
                 <button onClick={() => setShowInvite((s) => !s)} className="btn-outline"><KeyRound className="h-4 w-4" /> Invite</button>
                 <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
               </>
-            )
+            )}
             {myMembership?.role === 'moderator' && !isOwner && (
               <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
             )}
