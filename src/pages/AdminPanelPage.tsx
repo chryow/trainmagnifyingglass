@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import type { Report, ModerationAction, Profile } from '@/types/database';
 import { REPORT_REASON_LABELS, REPORT_STATUS_LABELS, MODERATION_ACTION_LABELS } from '@/types/database';
 import { Shield, Flag, Gavel, Users, Clock, CheckCircle, XCircle, UserX, UserCheck, ArrowUpCircle, EyeOff, Eye } from 'lucide-react';
+import ReportTargetInfo from '@/components/ReportTargetInfo';
 
 export default function AdminPanelPage() {
   const { profile } = useAuth();
@@ -182,10 +183,12 @@ export default function AdminPanelPage() {
                     <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
                   {r.escalation_reason && <p className="mt-2 rounded-lg bg-error-50 px-3 py-1.5 text-xs text-error-700 dark:bg-error-950/40 dark:text-error-400">Reason: {r.escalation_reason}</p>}
-                  {r.description && <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  {r.description && <p className="mt-2 whitespace-pre-line break-words text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  <ReportTargetInfo targetType={r.target_type} targetId={r.target_id} />
                   <div className="mt-2 flex items-center gap-2 text-xs text-stone-400">
                     <span className="capitalize">{r.target_type}</span>
                     {r.reporter && <><span>·</span><Avatar url={r.reporter.avatar_url ?? null} name={r.reporter.display_name} size={16} /><span>{r.reporter.display_name}</span></>}
+                    {r.community_id && <><span>·</span><span>Community report</span></>}
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button onClick={() => handleResolve(r.id, 'resolved')} disabled={actioning === r.id} className="btn-primary text-xs">

@@ -5,7 +5,7 @@ import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import type { Community, CommunityMember, Profile, CommunityType, Gem } from '@/types/database';
-import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus, Sparkles } from 'lucide-react';
+import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus, Sparkles, Settings as SettingsIcon, Archive } from 'lucide-react';
 
 export default function CommunityDetailsPage() {
   const route = useRoute();
@@ -153,6 +153,16 @@ export default function CommunityDetailsPage() {
     <div className="space-y-6">
       <button onClick={() => navigate('/communities')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><ArrowLeft className="h-4 w-4" /> Communities</button>
 
+      {(!community.is_active) && (
+        <div className="card flex items-center gap-3 border-amber-200 p-4 dark:border-amber-800">
+          <Archive className="h-5 w-5 shrink-0 text-amber-500" />
+          <div>
+            <p className="text-sm font-medium">This community is archived</p>
+            <p className="text-xs text-stone-500">Content is preserved but new activity is limited. {isOwner && 'You can restore it from the Edit page.'}</p>
+          </div>
+        </div>
+      )}
+
       {/* Cover + header */}
       <div className="card overflow-hidden">
         <div className="h-40 bg-gradient-to-br from-primary-400 to-accent-500 sm:h-52">
@@ -165,8 +175,8 @@ export default function CommunityDetailsPage() {
             {community.general_area && <span className="flex items-center gap-1 text-xs text-stone-400"><MapPin className="h-3 w-3" />{community.general_area}</span>}
             {!community.is_active && <span className="badge bg-stone-200 text-stone-600">Archived</span>}
           </div>
-          <h1 className="font-display text-2xl font-semibold">{community.name}</h1>
-          {community.description && <p className="mt-2 text-stone-600 dark:text-stone-300">{community.description}</p>}
+          <h1 className="font-display text-2xl font-semibold break-words">{community.name}</h1>
+          {community.description && <p className="mt-2 break-words text-stone-600 dark:text-stone-300">{community.description}</p>}
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1.5 text-sm text-stone-500"><Users className="h-4 w-4" /> {members.length} member{members.length !== 1 ? 's' : ''}</span>
@@ -174,12 +184,12 @@ export default function CommunityDetailsPage() {
 
           {/* Actions */}
           <div className="mt-5 flex flex-wrap gap-2">
-            {!isMember && !isPrivate && (
+            {!isMember && !isPrivate && community.is_active && (
               <button onClick={handleJoin} disabled={joining} className="btn-primary">
                 {joining ? <LoadingSpinner size={16} /> : <><LogIn className="h-4 w-4" /> Join community</>}
               </button>
             )}
-            {!isMember && isPrivate && (
+            {!isMember && isPrivate && community.is_active && (
               <div className="w-full space-y-2">
                 <div className="flex gap-2">
                   <input className="input" placeholder="Invitation code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
@@ -198,14 +208,15 @@ export default function CommunityDetailsPage() {
             {isOwner && (
               <>
                 <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"><Shield className="h-3 w-3" /> Owner</span>
+                <button onClick={() => navigate(`/communities/${community.id}/edit`)} className="btn-outline"><SettingsIcon className="h-4 w-4" /> Edit</button>
                 <button onClick={() => setShowInvite((s) => !s)} className="btn-outline"><KeyRound className="h-4 w-4" /> Invite</button>
                 <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
               </>
-            )}
+            )
             {myMembership?.role === 'moderator' && !isOwner && (
               <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
             )}
-            {isMember && (
+            {isMember && community.is_active && (
               <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-secondary"><Plus className="h-4 w-4" /> Add a gem</button>
             )}
           </div>
@@ -274,12 +285,12 @@ export default function CommunityDetailsPage() {
       <div className="card p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">Hidden gems ({gems.length})</h2>
-          {isMember && (
+          {isMember && community.is_active && (
             <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-secondary text-sm"><Plus className="h-4 w-4" /> Add a gem</button>
           )}
         </div>
         {gems.length === 0 ? (
-          <EmptyState icon={<Plus className="h-6 w-6" />} title="No gems yet" description={isMember ? "Share the first hidden gem in this community." : "Gems will appear here once members start sharing."} />
+          <EmptyState icon={<Plus className="h-6 w-6" />} title="No gems yet" description={!community.is_active ? "This community is archived. New gems cannot be added." : isMember ? "Share the first hidden gem in this community." : "Gems will appear here once members start sharing."} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {gems.map((g) => (

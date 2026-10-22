@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner, SkeletonCard } from '@/components/States';
 import type { Gem, Category, Community, VerificationStatus } from '@/types/database';
 import { VERIFICATION_STATUS_LABELS } from '@/types/database';
-import { Search, MapPin, Sparkles, Filter, X, RotateCcw } from 'lucide-react';
+import { Search, MapPin, Sparkles, Filter, X, RotateCcw, Globe, Lock } from 'lucide-react';
 
 type SortMode = 'recent' | 'confirmed';
 
@@ -52,7 +52,7 @@ export default function ExplorePage() {
     try {
       const [catsRes, commsRes] = await Promise.all([
         supabase.from('categories').select('*').order('sort_order'),
-        supabase.from('communities').select('id, name, visibility').order('name'),
+        supabase.from('communities').select('id, name, visibility, is_active').eq('is_active', true).order('name'),
       ]);
       setCategories((catsRes.data as Category[] | null) ?? []);
       setCommunities((commsRes.data as Community[] | null) ?? []);
@@ -189,7 +189,9 @@ export default function ExplorePage() {
             <select className="input" value={filters.communityId} onChange={(e) => setFilters((f) => ({ ...f, communityId: e.target.value }))}>
               <option value="">All communities</option>
               {communities.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.visibility === 'private' ? <Lock className="inline h-3 w-3" /> : <Globe className="inline h-3 w-3" />} {c.name}
+                </option>
               ))}
             </select>
           </div>

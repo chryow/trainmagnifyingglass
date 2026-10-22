@@ -109,11 +109,19 @@ export default function ProfilePage() {
     if (!profile || !myProfile || isSelf) return;
     setFollowAction(true);
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', myProfile.id).eq('followee_id', profile.id);
+      const { error: delErr } = await supabase.from('follows').delete().eq('follower_id', myProfile.id).eq('followee_id', profile.id);
+      if (delErr) {
+        setFollowAction(false);
+        return;
+      }
       setIsFollowing(false);
       setFollowers((prev) => prev.filter((f) => f.follower_id !== myProfile.id));
     } else {
-      await supabase.from('follows').insert({ follower_id: myProfile.id, followee_id: profile.id });
+      const { error: insErr } = await supabase.from('follows').insert({ follower_id: myProfile.id, followee_id: profile.id });
+      if (insErr) {
+        setFollowAction(false);
+        return;
+      }
       setIsFollowing(true);
       setFollowers((prev) => [...prev, { id: 'temp', follower_id: myProfile.id, followee_id: profile.id, created_at: new Date().toISOString(), follower: { id: myProfile.id, username: myProfile.username, display_name: myProfile.display_name, avatar_url: myProfile.avatar_url } }]);
     }

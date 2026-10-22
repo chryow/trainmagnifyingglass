@@ -10,6 +10,7 @@ import {
   ArrowLeft, Flag, Shield, Gavel, Eye, EyeOff, Ban, ArrowUpCircle,
   CheckCircle, XCircle, Clock, Users, FileText,
 } from 'lucide-react';
+import ReportTargetInfo from '@/components/ReportTargetInfo';
 
 export default function ModeratorDashboardPage() {
   const route = useRoute();
@@ -140,7 +141,8 @@ export default function ModeratorDashboardPage() {
                     </div>
                     <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
-                  {r.description && <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  {r.description && <p className="mt-2 whitespace-pre-line break-words text-sm text-stone-600 dark:text-stone-300">{r.description}</p>}
+                  <ReportTargetInfo targetType={r.target_type} targetId={r.target_id} />
                   <div className="mt-2 flex items-center gap-2 text-xs text-stone-400">
                     {r.reporter && <Avatar url={r.reporter.avatar_url ?? null} name={r.reporter.display_name} size={20} />}
                     <span>Reported by {r.reporter?.display_name ?? 'Unknown'}</span>
