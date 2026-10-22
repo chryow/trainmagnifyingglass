@@ -43,6 +43,28 @@ export async function deleteGemImage(path: string): Promise<void> {
   if (error) throw error;
 }
 
+// Community cover uploads — public bucket, owner-restricted writes
+
+export async function uploadCommunityImage(communityId: string, file: File): Promise<UploadResult> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const path = `${communityId}/${filename}`;
+
+  const { error } = await supabase.storage
+    .from('community-images')
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('community-images').getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
+export async function deleteCommunityImage(path: string): Promise<void> {
+  const { error } = await supabase.storage.from('community-images').remove([path]);
+  if (error) throw error;
+}
+
 // Evidence uploads — private bucket, signed URLs
 
 export interface EvidenceUploadResult {

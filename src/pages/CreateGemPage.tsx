@@ -100,9 +100,12 @@ export default function CreateGemPage() {
         setUploading(true);
         try {
           const { url } = await uploadGemImage(gemId, coverFile);
-          await supabase.from('gems').update({ cover_image_url: url }).eq('id', gemId);
-        } catch {
-          setImageError('Cover image upload failed, but your gem was saved. You can add a cover image from the edit page.');
+          const { error: updErr } = await supabase.from('gems').update({ cover_image_url: url }).eq('id', gemId);
+          if (updErr) {
+            setImageError('Cover image uploaded but could not be linked to your gem. The gem was saved successfully.');
+          }
+        } catch (uploadErr) {
+          setImageError('Cover image upload failed, but your gem was saved. You can add a cover image later by editing the gem.');
         } finally {
           setUploading(false);
         }
