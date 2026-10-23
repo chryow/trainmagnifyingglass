@@ -79,49 +79,33 @@ export default function ProfilePage() {
         setSavedGems(sg.map((s) => s.gem).filter(Boolean));
       }
 
-      // Following / followers
+      // Following / followers — use relationship-aware RPCs that enforce
+      // profile_visibility, show_following/show_followers, and blocking
+      type RpcRow = { follow_id: string; profile_id: string; username: string; display_name: string; avatar_url: string | null; created_at: string };
       const [fRes, frRes] = await Promise.all([
-        supabase.from('follows').select('*, followee:profiles(id, username, display_name, avatar_url)').eq('follower_id', targetId),
-        supabase.from('follows').select('*, follower:profiles(id, username, display_name, avatar_url)').eq('followee_id', targetId),
+        supabase.rpc('get_visible_following', { p_target_user_id: targetId }),
+        supabase.rpc('get_visible_followers', { p_target_user_id: targetId }),
       ]);
-      const followingData = (fRes.data as Follow[] | null) ?? [];
-      const followersData = (frRes.data as Follow[] | null) ?? [];
+      const followingRows = (fRes.data as RpcRow[] | null) ?? [];
+      const followerRows = (frRes.data as RpcRow[] | null) ?? [];
 
-      // Resolve null profile joins via safe_profile_summary (for community_only profiles)
-      const missingFollowingIds = followingData.filter((f) => !f.followee).map((f) => f.followee_id);
-      const missingFollowerIds = followersData.filter((f) => !f.follower).map((f) => f.follower_id);
-      const missingIds = Array.from(new Set([...missingFollowingIds, ...missingFollowerIds]));
-      const safeProfiles = new Map<string, { id: string; username: string; display_name: string; avatar_url: string | null }>();
-      if (missingIds.length > 0) {
-        const { data: summaries } = await supabase.rpc('safe_profile_summary', { p_user_id: missingIds[0] });
-        // RPC only accepts single UUID, so fetch individually for multiple
-        if (missingIds.length === 1 && summaries) {
-          const s = summaries as { id: string; username: string; display_name: string; avatar_url: string | null } | null;
-          if (s) safeProfiles.set(s.id, s);
-        } else {
-          const results = await Promise.all(
-            missingIds.map((id) => supabase.rpc('safe_profile_summary', { p_user_id: id }).maybeSingle())
-          );
-          for (const r of results) {
-            const s = r.data as { id: string; username: string; display_name: string; avatar_url: string | null } | null;
-            if (s) safeProfiles.set(s.id, s);
-          }
-        }
-      }
+      const followingData: Follow[] = followingRows.map((r) => ({
+        id: r.follow_id,
+        follower_id: targetId,
+        followee_id: r.profile_id,
+        created_at: r.created_at,
+        followee: { id: r.profile_id, username: r.username, display_name: r.display_name, avatar_url: r.avatar_url },
+      }));
+      const followersData: Follow[] = followerRows.map((r) => ({
+        id: r.follow_id,
+        follower_id: r.profile_id,
+        followee_id: targetId,
+        created_at: r.created_at,
+        follower: { id: r.profile_id, username: r.username, display_name: r.display_name, avatar_url: r.avatar_url },
+      }));
 
-      const enrichedFollowing = followingData.map((f) => {
-        if (f.followee) return f;
-        const safe = safeProfiles.get(f.followee_id);
-        return safe ? { ...f, followee: safe } : f;
-      });
-      const enrichedFollowers = followersData.map((f) => {
-        if (f.follower) return f;
-        const safe = safeProfiles.get(f.follower_id);
-        return safe ? { ...f, follower: safe } : f;
-      });
-
-      setFollowing(enrichedFollowing);
-      setFollowers(enrichedFollowers);
+      setFollowing(followingData);
+      setFollowers(followersData);
 
       // Is current user following this person?
       if (!isSelf) {
