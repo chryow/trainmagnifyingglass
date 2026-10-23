@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { LoadingSpinner, ErrorState } from '@/components/States';
-import { validateImageFile, uploadGemImage, deleteGemImage } from '@/lib/upload';
+import { validateImageFile, uploadCommunityImage, deleteCommunityImage } from '@/lib/upload';
 import type { Community, Visibility, CommunityType } from '@/types/database';
 import { ArrowLeft, Save, ImagePlus, X, Archive, Trash2, AlertTriangle } from 'lucide-react';
 
@@ -80,11 +80,11 @@ export default function EditCommunityPage() {
     try {
       let coverUrl = community.cover_image_url;
       if (coverFile) {
-        const { url } = await uploadGemImage(community.id, coverFile);
+        const { url, path } = await uploadCommunityImage(community.id, coverFile);
         coverUrl = url;
         if (community.cover_image_url) {
-          const oldPath = community.cover_image_url.split('/gem-images/')[1];
-          if (oldPath) { try { await deleteGemImage(oldPath); } catch { /* ignore */ } }
+          const oldPath = community.cover_image_url.split('/community-images/')[1];
+          if (oldPath) { try { await deleteCommunityImage(oldPath); } catch { /* ignore */ } }
         }
       }
       const { error: updErr } = await supabase.from('communities').update({
@@ -98,8 +98,9 @@ export default function EditCommunityPage() {
       if (updErr) { setFormError(updErr.message); setSaving(false); return; }
       setSaving(false);
       navigate(`/communities/${community.id}`);
-    } catch {
-      setFormError('Failed to save. Please try again.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save. Please try again.';
+      setFormError(msg);
       setSaving(false);
     }
   };

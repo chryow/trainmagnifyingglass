@@ -74,18 +74,18 @@ export default function CommunitiesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((c) => (
-            <button key={c.id} onClick={() => navigate(`/communities/${c.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
-              <div className="h-28 bg-gradient-to-br from-primary-300 to-accent-400">
+            <button key={c.id} onClick={() => navigate(`/communities/${c.id}`)} className="card flex flex-col overflow-hidden text-left transition-shadow hover:shadow-card-hover">
+              <div className="h-28 shrink-0 bg-gradient-to-br from-primary-300 to-accent-400">
                 {c.cover_image_url && <img src={c.cover_image_url} alt="" className="h-full w-full object-cover" />}
               </div>
-              <div className="p-4">
-                <div className="mb-1.5 flex items-center gap-2">
+              <div className="flex flex-1 flex-col p-4">
+                <div className="mb-1.5 flex flex-wrap items-center gap-2">
                   <TypeBadge type={c.community_type} />
                   <VisibilityBadge visibility={c.visibility} />
                   {c.general_area && <span className="flex items-center gap-1 text-xs text-stone-400"><MapPin className="h-3 w-3" />{c.general_area}</span>}
                 </div>
-                <h3 className="font-display text-base font-semibold">{c.name}</h3>
-                {c.description && <p className="mt-1 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">{c.description}</p>}
+                <h3 className="font-display text-base font-semibold break-words">{c.name}</h3>
+                {c.description && <p className="mt-1 line-clamp-2 break-words text-sm text-stone-500 dark:text-stone-400">{c.description}</p>}
               </div>
             </button>
           ))}

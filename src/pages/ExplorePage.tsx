@@ -55,7 +55,14 @@ export default function ExplorePage() {
         supabase.from('communities').select('id, name, visibility, is_active').eq('is_active', true).order('name'),
       ]);
       setCategories((catsRes.data as Category[] | null) ?? []);
-      setCommunities((commsRes.data as Community[] | null) ?? []);
+      const comms = (commsRes.data as Community[] | null) ?? [];
+      setCommunities(comms);
+      setFilters((prev) => {
+        if (prev.communityId && !comms.some((c) => c.id === prev.communityId)) {
+          return { ...prev, communityId: '' };
+        }
+        return prev;
+      });
       await loadGems(0, true);
     } catch {
       setError(true);
