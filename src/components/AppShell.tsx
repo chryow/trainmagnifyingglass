@@ -130,6 +130,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="font-display text-base font-semibold">Hidden Gems</span>
         </button>
         <div className="flex items-center gap-1">
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin')}
+              className={`rounded-lg p-2 hover:bg-stone-100 dark:hover:bg-stone-800 ${
+                isActive(route.path, ['/admin']) ? 'text-error-600 dark:text-error-400' : 'text-stone-600 dark:text-stone-300'
+              }`}
+              aria-label="Admin Panel"
+            >
+              <Shield className="h-5 w-5" />
+            </button>
+          )}
           <button onClick={toggleTheme} className="rounded-lg p-2 text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800" aria-label="Toggle theme">
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
