@@ -9,14 +9,16 @@ import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { uploadGemImage, validateImageFile, deleteGemImage, deleteAllGemImages } from '@/lib/upload';
 import AccuracyPanel from '@/components/AccuracyPanel';
 import { GemsMap, LocationPicker, type Coords } from '@/components/Map';
+import { GemDetailsFields, GemDetailsSummary, detailsPayload, type DetailsValue } from '@/components/GemDetailsFields';
 import ReportModal from '@/components/ReportModal';
 import SaveToCollectionSheet from '@/components/SaveToCollectionSheet';
+import { useIsAdmin } from '@/lib/useIsAdmin';
 import type { Gem, GemImage, Category, Comment, GemReaction, GemReactionType } from '@/types/database';
 import { GEM_REACTION_TYPES, GEM_REACTION_LABELS, GEM_REACTION_EMOJIS } from '@/types/database';
 import {
   ArrowLeft, MapPin, Edit3, Save, X, Trash2, Send, ImagePlus,
   Lock, Sparkles as SparkIcon, Calendar, Bookmark, MessageCircle,
-  Heart, ChevronDown, Reply, CornerDownRight, Flag, FolderPlus
+  Heart, ChevronDown, Reply, CornerDownRight, Flag, FolderPlus, Star
 } from 'lucide-react';
 
 export default function GemDetailsPage() {
@@ -43,6 +45,7 @@ export default function GemDetailsPage() {
   const [area, setArea] = useState('');
   const [address, setAddress] = useState('');
   const [coords, setCoords] = useState<Coords | null>(null);
+  const [details, setDetails] = useState<DetailsValue>({ openingHours: '', priceLevel: null, goodFor: [] });
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
@@ -58,6 +61,7 @@ export default function GemDetailsPage() {
   const [showReport, setShowReport] = useState(false);
   const [showCollections, setShowCollections] = useState(false);
   const dialogs = useDialogs();
+  const isAdmin = useIsAdmin();
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
   // `silent` refreshes data in place (after a like/comment/save) without
@@ -117,6 +121,7 @@ export default function GemDetailsPage() {
     setArea(gem.area ?? '');
     setAddress(gem.address ?? '');
     setCoords(gem.lat != null && gem.lng != null ? { lat: gem.lat, lng: gem.lng } : null);
+    setDetails({ openingHours: gem.opening_hours ?? '', priceLevel: gem.price_level ?? null, goodFor: gem.good_for ?? [] });
     setDescription(gem.description ?? '');
     setCoverImage(gem.cover_image_url);
     setFormError(null);
@@ -137,6 +142,7 @@ export default function GemDetailsPage() {
       address: address.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
+      ...detailsPayload(details, !!(gem.opening_hours || gem.price_level || gem.good_for?.length)),
       description: description.trim() || null,
       cover_image_url: coverImage,
     }).eq('id', gem.id);
@@ -161,6 +167,20 @@ export default function GemDetailsPage() {
       return;
     }
     await load({ silent: true });
+  };
+
+  const handleFeature = async () => {
+    if (!gem) return;
+    const note = await dialogs.prompt({
+      title: 'Make this the gem of the week?',
+      message: 'It replaces the current pick at the top of Discover for everyone. Add a short line about why (optional).',
+      placeholder: 'e.g. The best kopi susu in South Jakarta',
+      confirmLabel: 'Feature it',
+      required: false,
+    });
+    if (note === null) return;
+    const { error: fErr } = await supabase.rpc('admin_set_featured', { p_kind: 'gem', p_item_id: gem.id, p_note: note });
+    dialogs.toast(fErr ? fErr.message : 'Featured on Discover', fErr ? 'error' : 'success');
   };
 
   const handleDelete = async () => {
@@ -351,6 +371,7 @@ export default function GemDetailsPage() {
               <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} />
             </div>
           </div>
+          <GemDetailsFields value={details} onChange={setDetails} />
           <div>
             <label className="label">Location on the map</label>
             <LocationPicker value={coords} onChange={setCoords} suggestedQuery={[placeName, area].filter((s) => s.trim()).join(', ')} />
@@ -435,6 +456,11 @@ export default function GemDetailsPage() {
             <Bookmark className={`h-4 w-4 ${isSaved ? 'animate-pop fill-current' : ''}`} />
             {isSaved ? 'Saved' : 'Save'}
           </button>
+          {isAdmin && gem.status === 'published' && gem.community?.visibility !== 'private' && (
+            <button onClick={handleFeature} className="btn-outline" title="Feature on Discover" aria-label="Feature on Discover">
+              <Star className="h-4 w-4" />
+            </button>
+          )}
           {gem.status === 'published' && (
             <button onClick={() => setShowCollections(true)} className="btn-outline" title="Add to a collection">
               <FolderPlus className="h-4 w-4" /> <span className="hidden sm:inline">Collection</span>
@@ -452,6 +478,8 @@ export default function GemDetailsPage() {
       {gem.description && (
         <p className="max-w-prose whitespace-pre-line text-lg leading-relaxed text-stone-700 dark:text-stone-300">{gem.description}</p>
       )}
+
+      <GemDetailsSummary openingHours={gem.opening_hours} priceLevel={gem.price_level} goodFor={gem.good_for} />
 
       {/* Where to find it */}
       {hasCoords && <GemsMap points={mapPoints} className="h-64 sm:h-72" />}

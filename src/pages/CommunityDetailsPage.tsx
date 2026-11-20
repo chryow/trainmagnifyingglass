@@ -7,8 +7,9 @@ import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { GemCard, GemArt } from '@/components/GemCard';
 import { PillTabs } from '@/components/PillTabs';
+import { useIsAdmin } from '@/lib/useIsAdmin';
 import type { Community, CommunityMember, Profile, CommunityType, Gem } from '@/types/database';
-import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus, Sparkles, Settings as SettingsIcon, Archive } from 'lucide-react';
+import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus, Sparkles, Settings as SettingsIcon, Archive, Star } from 'lucide-react';
 
 export default function CommunityDetailsPage() {
   const route = useRoute();
@@ -30,6 +31,7 @@ export default function CommunityDetailsPage() {
   const [joinCode, setJoinCode] = useState('');
   const [section, setSection] = useState<'gems' | 'members' | 'guidelines'>('gems');
   const dialogs = useDialogs();
+  const isAdmin = useIsAdmin();
   const [joinError, setJoinError] = useState<string | null>(null);
   const [gems, setGems] = useState<Gem[]>([]);
 
@@ -199,6 +201,19 @@ export default function CommunityDetailsPage() {
             )}
             {(isOwner || myMembership?.role === 'moderator') && (
               <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
+            )}
+            {isAdmin && community.visibility === 'public' && community.is_active && (
+              <button
+                onClick={async () => {
+                  const ok = await dialogs.confirm({ title: 'Feature this community?', message: 'It replaces the current featured community on Discover.', confirmLabel: 'Feature it' });
+                  if (!ok) return;
+                  const { error: fErr } = await supabase.rpc('admin_set_featured', { p_kind: 'community', p_item_id: community.id });
+                  dialogs.toast(fErr ? fErr.message : 'Featured on Discover', fErr ? 'error' : 'success');
+                }}
+                className="btn-outline"
+              >
+                <Star className="h-4 w-4" /> Feature
+              </button>
             )}
             {isMember && !isOwner && (
               <button onClick={handleLeave} disabled={leaving} className="btn-ghost text-stone-500">
