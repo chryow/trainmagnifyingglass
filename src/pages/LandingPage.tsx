@@ -1,4 +1,4 @@
-import { useNavigate } from '@/lib/router';
+import { useNavigate, linkTo } from '@/lib/router';
 import { Logo } from '@/components/Logo';
 import { GemArt } from '@/components/GemCard';
 import { MapPin, Users, ShieldCheck, Bookmark } from 'lucide-react';
@@ -99,13 +99,13 @@ export default function LandingPage() {
       <footer className="border-t border-stone-200/70 py-8 dark:border-stone-800">
         <div className="mx-auto max-w-5xl px-4">
           <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-stone-500">
-            <a href="#/privacy" className="hover:text-stone-800 dark:hover:text-stone-200">Privacy</a>
-            <a href="#/terms" className="hover:text-stone-800 dark:hover:text-stone-200">Terms</a>
-            <a href="#/guidelines" className="hover:text-stone-800 dark:hover:text-stone-200">Community guidelines</a>
-            <a href="#/accuracy" className="hover:text-stone-800 dark:hover:text-stone-200">Accuracy</a>
-            <a href="#/content-guidelines" className="hover:text-stone-800 dark:hover:text-stone-200">Content guidelines</a>
-            <a href="#/deletion-info" className="hover:text-stone-800 dark:hover:text-stone-200">Account deletion</a>
-            <a href="#/support" className="hover:text-stone-800 dark:hover:text-stone-200">Support</a>
+            <a href="/privacy" onClick={linkTo('/privacy')} className="hover:text-stone-800 dark:hover:text-stone-200">Privacy</a>
+            <a href="/terms" onClick={linkTo('/terms')} className="hover:text-stone-800 dark:hover:text-stone-200">Terms</a>
+            <a href="/guidelines" onClick={linkTo('/guidelines')} className="hover:text-stone-800 dark:hover:text-stone-200">Community guidelines</a>
+            <a href="/accuracy" onClick={linkTo('/accuracy')} className="hover:text-stone-800 dark:hover:text-stone-200">Accuracy</a>
+            <a href="/content-guidelines" onClick={linkTo('/content-guidelines')} className="hover:text-stone-800 dark:hover:text-stone-200">Content guidelines</a>
+            <a href="/deletion-info" onClick={linkTo('/deletion-info')} className="hover:text-stone-800 dark:hover:text-stone-200">Account deletion</a>
+            <a href="/support" onClick={linkTo('/support')} className="hover:text-stone-800 dark:hover:text-stone-200">Support</a>
           </nav>
         </div>
       </footer>
