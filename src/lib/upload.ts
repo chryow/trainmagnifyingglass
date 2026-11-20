@@ -43,6 +43,28 @@ export async function deleteGemImage(path: string): Promise<void> {
   if (error) throw error;
 }
 
+// Profile photos — public bucket, each user writes only to avatars/<their id>/
+
+export const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB (matches bucket limit)
+
+export async function uploadAvatar(userId: string, file: File): Promise<UploadResult> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
+/** Removes a previous avatar if it was uploaded to our bucket (pasted URLs are left alone). */
+export async function deleteAvatarByUrl(url: string | null | undefined): Promise<void> {
+  const path = url?.split('/avatars/')[1];
+  if (!path) return;
+  await supabase.storage.from('avatars').remove([path]);
+}
+
 // Community cover uploads — public bucket, owner-restricted writes
 
 export async function uploadCommunityImage(communityId: string, file: File): Promise<UploadResult> {

@@ -3,10 +3,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
-import { LoadingSpinner, ErrorState } from '@/components/States';
+import { LoadingSpinner, EmptyState } from '@/components/States';
 import { validateImageFile, uploadGemImage } from '@/lib/upload';
 import type { Community, Category, GemStatus } from '@/types/database';
-import { ArrowLeft, Save, Send, ImagePlus, X } from 'lucide-react';
+import { ArrowLeft, Save, Send, ImagePlus, X, Users } from 'lucide-react';
 
 export default function CreateGemPage() {
   const route = useRoute();
@@ -130,7 +130,12 @@ export default function CreateGemPage() {
   if (communities.length === 0) {
     return (
       <div className="mx-auto max-w-2xl">
-        <ErrorState title="Join a community first" description="You need to be a member of at least one community to share a gem." onRetry={() => navigate('/communities')} />
+        <EmptyState
+          icon={<Users className="h-6 w-6" />}
+          title="Join a community first"
+          description="Gems are shared inside communities. Join one (or create your own), then come back to add your gem."
+          action={<button onClick={() => navigate('/communities')} className="btn-primary">Find a community</button>}
+        />
       </div>
     );
   }
