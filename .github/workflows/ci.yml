@@ -22,3 +22,15 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-placeholder
+      - name: Verify Leaflet CDN integrity hashes
+        # The map loads Leaflet from unpkg with SRI; if the hashes in
+        # src/lib/leaflet.ts don't match, browsers refuse to load the map.
+        run: |
+          check() {
+            expected=$(grep -oP "$2 = '\\K[^']+" src/lib/leaflet.ts)
+            actual="sha512-$(curl -sSfL "$1" | openssl dgst -sha512 -binary | base64 -w0)"
+            echo "$1"; echo "  expected $expected"; echo "  actual   $actual"
+            [ "$expected" = "$actual" ]
+          }
+          check https://unpkg.com/leaflet@1.9.4/dist/leaflet.js JS_SRI
+          check https://unpkg.com/leaflet@1.9.4/dist/leaflet.css CSS_SRI
