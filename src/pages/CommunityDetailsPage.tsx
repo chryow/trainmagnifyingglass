@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
@@ -25,6 +26,7 @@ export default function CommunityDetailsPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const dialogs = useDialogs();
   const [joinError, setJoinError] = useState<string | null>(null);
   const [gems, setGems] = useState<Gem[]>([]);
 
@@ -91,7 +93,7 @@ export default function CommunityDetailsPage() {
 
   const handleLeave = async () => {
     if (!profile || !community) return;
-    if (!confirm("Leave this community? You can rejoin later if it's public.")) return;
+    if (!(await dialogs.confirm({ title: 'Leave this community?', message: community.visibility === 'public' ? 'You can rejoin any time.' : "It's private, so you'll need a new invite code to rejoin.", confirmLabel: 'Leave', danger: true }))) return;
     setLeaving(true);
     const { error: leaveErr } = await supabase.from('community_members').delete().eq('community_id', community.id).eq('user_id', profile.id);
     setLeaving(false);

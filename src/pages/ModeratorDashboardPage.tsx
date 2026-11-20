@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
@@ -15,6 +16,7 @@ import ReportTargetInfo from '@/components/ReportTargetInfo';
 export default function ModeratorDashboardPage() {
   const route = useRoute();
   const navigate = useNavigate();
+  const dialogs = useDialogs();
   const { profile } = useAuth();
   const match = matchPath('/moderation/:id', route.path);
   const communityId = match?.id ?? '';
@@ -66,28 +68,30 @@ export default function ModeratorDashboardPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleEscalate = async (reportId: string) => {
-    const reason = prompt('Why are you escalating this report to platform admins?');
-    if (!reason?.trim()) return;
+    const reason = await dialogs.prompt({ title: 'Escalate to platform admins', message: 'Why does this report need an admin?', placeholder: 'e.g. Repeated harassment across communities', confirmLabel: 'Escalate', multiline: true });
+    if (!reason) return;
     setActioning(reportId);
     const { error: rpcErr } = await supabase.rpc('escalate_report', {
       p_report_id: reportId,
-      p_escalation_reason: reason.trim(),
+      p_escalation_reason: reason,
     });
     setActioning(null);
-    if (rpcErr) return;
+    if (rpcErr) { dialogs.toast(rpcErr.message, 'error'); return; }
+    dialogs.toast('Report escalated', 'success');
     await load();
   };
 
   const handleLiftSuspension = async (suspensionId: string) => {
-    const reason = prompt('Why are you lifting this suspension?');
-    if (!reason?.trim()) return;
+    const reason = await dialogs.prompt({ title: 'Lift this suspension?', message: 'The member will be able to post in this community again.', placeholder: 'Reason for lifting the suspension', confirmLabel: 'Lift suspension', multiline: true });
+    if (!reason) return;
     setActioning(suspensionId);
     const { error: rpcErr } = await supabase.rpc('moderator_lift_suspension', {
       p_suspension_id: suspensionId,
-      p_reason: reason.trim(),
+      p_reason: reason,
     });
     setActioning(null);
-    if (rpcErr) return;
+    if (rpcErr) { dialogs.toast(rpcErr.message, 'error'); return; }
+    dialogs.toast('Suspension lifted', 'success');
     await load();
   };
 

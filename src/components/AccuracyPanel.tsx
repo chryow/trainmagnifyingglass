@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { Avatar } from '@/components/Avatar';
 import { LoadingSpinner, EmptyState } from '@/components/States';
@@ -502,10 +503,17 @@ function CorrectionReview({
   const [actioning, setActioning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
+  const dialogs = useDialogs();
 
   const handleAction = async (correctionId: string, action: 'accept' | 'reject' | 'needs_info' | 'escalate') => {
     if (action === 'accept' || action === 'reject') {
-      if (!confirm(`Are you sure you want to ${action === 'accept' ? 'accept' : 'reject'} this correction?`)) return;
+      const ok = await dialogs.confirm({
+        title: action === 'accept' ? 'Accept this correction?' : 'Reject this correction?',
+        message: action === 'accept' ? "The gem's details will be updated with the suggested change." : 'The suggestion will be closed without changing the gem.',
+        confirmLabel: action === 'accept' ? 'Accept' : 'Reject',
+        danger: action === 'reject',
+      });
+      if (!ok) return;
     }
     setActioning(correctionId);
     setError(null);

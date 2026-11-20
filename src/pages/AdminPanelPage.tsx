@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { PageHeader } from '@/components/Avatar';
 import { Avatar } from '@/components/Avatar';
@@ -12,6 +13,7 @@ import ReportTargetInfo from '@/components/ReportTargetInfo';
 export default function AdminPanelPage() {
   const { profile } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const dialogs = useDialogs();
   const [tab, setTab] = useState<'escalated' | 'reports' | 'users' | 'history'>('escalated');
   const [reports, setReports] = useState<Report[]>([]);
   const [actions, setActions] = useState<ModerationAction[]>([]);
@@ -56,44 +58,47 @@ export default function AdminPanelPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleResolve = async (reportId: string, resolution: 'resolved' | 'dismissed') => {
-    const actionTaken = prompt(resolution === 'resolved' ? 'What action was taken?' : 'Why is this report being dismissed?');
-    if (!actionTaken?.trim()) return;
+    const actionTaken = await dialogs.prompt(resolution === 'resolved'
+      ? { title: 'Resolve report', message: 'What action was taken? This is saved in the moderation log.', placeholder: 'e.g. Removed the comment and warned the user', confirmLabel: 'Resolve', multiline: true }
+      : { title: 'Dismiss report', message: 'Why is this report being dismissed?', placeholder: 'e.g. Content follows the guidelines', confirmLabel: 'Dismiss', multiline: true });
+    if (!actionTaken) return;
     setActioning(reportId);
     const { error: rpcErr } = await supabase.rpc('admin_resolve_report', {
       p_report_id: reportId,
       p_resolution: resolution,
-      p_action_taken: actionTaken.trim(),
+      p_action_taken: actionTaken,
     });
     setActioning(null);
-    if (rpcErr) return;
+    if (rpcErr) { dialogs.toast(rpcErr.message, 'error'); return; }
+    dialogs.toast(resolution === 'resolved' ? 'Report resolved' : 'Report dismissed', 'success');
     await load();
   };
 
   const handleDeactivate = async (userId: string) => {
-    if (!confirm('Are you sure you want to deactivate this account?')) return;
-    const reason = prompt('Reason for deactivation?');
-    if (!reason?.trim()) return;
+    const reason = await dialogs.prompt({ title: 'Deactivate this account?', message: "They'll be signed out and can't sign in again until reactivated. The reason is saved in the moderation log.", placeholder: 'Reason for deactivation', confirmLabel: 'Deactivate', danger: true, multiline: true });
+    if (!reason) return;
     setActioning(userId);
     const { error: rpcErr } = await supabase.rpc('admin_deactivate_account', {
       p_user_id: userId,
-      p_reason: reason.trim(),
+      p_reason: reason,
     });
     setActioning(null);
-    if (rpcErr) return;
+    if (rpcErr) { dialogs.toast(rpcErr.message, 'error'); return; }
+    dialogs.toast('Account deactivated', 'success');
     await load();
   };
 
   const handleReactivate = async (userId: string) => {
-    if (!confirm('Reactivate this account?')) return;
-    const reason = prompt('Reason for reactivation?');
-    if (!reason?.trim()) return;
+    const reason = await dialogs.prompt({ title: 'Reactivate this account?', message: 'They will be able to sign in again.', placeholder: 'Reason for reactivation', confirmLabel: 'Reactivate', multiline: true });
+    if (!reason) return;
     setActioning(userId);
     const { error: rpcErr } = await supabase.rpc('admin_reactivate_account', {
       p_user_id: userId,
-      p_reason: reason.trim(),
+      p_reason: reason,
     });
     setActioning(null);
-    if (rpcErr) return;
+    if (rpcErr) { dialogs.toast(rpcErr.message, 'error'); return; }
+    dialogs.toast('Account reactivated', 'success');
     await load();
   };
 

@@ -1,5 +1,6 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
@@ -13,6 +14,7 @@ import type { ProfileVisibility } from '@/types/database';
 export default function PrivacySettingsPage() {
   const { profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
+  const dialogs = useDialogs();
   const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>('public');
   const [showArea, setShowArea] = useState(true);
   const [showFollowing, setShowFollowing] = useState(true);
@@ -83,7 +85,7 @@ export default function PrivacySettingsPage() {
   }, [dirty]);
 
   const handleSignOutAll = async () => {
-    if (!confirm('This will sign you out of all devices. Continue?')) return;
+    if (!(await dialogs.confirm({ title: 'Sign out everywhere?', message: "You'll be signed out on every device, including this one.", confirmLabel: 'Sign out everywhere' }))) return;
     await supabase.auth.signOut({ scope: 'global' });
     await signOut();
   };
