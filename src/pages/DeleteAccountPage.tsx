@@ -101,11 +101,11 @@ export default function DeleteAccountPage() {
       ) : (
         <form onSubmit={handleDelete} className="card space-y-5 p-6" noValidate>
           {/* What will happen */}
-          <div className="rounded-xl bg-amber-50 p-4 dark:bg-amber-900/20">
-            <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-amber-800 dark:text-amber-400">
+          <div className="rounded-xl bg-citrine-100 p-4 dark:bg-citrine-500/20">
+            <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-citrine-700 dark:text-citrine-500">
               <AlertTriangle className="h-4 w-4" /> What will happen
             </h3>
-            <ul className="mt-2 space-y-1 text-xs text-amber-700 dark:text-amber-300">
+            <ul className="mt-2 space-y-1 text-xs text-citrine-700 dark:text-citrine-300">
               <li>Your profile will be anonymized as "Deleted User"</li>
               <li>Your private collections and saved gems will be removed</li>
               <li>Your follow and block relationships will be removed</li>

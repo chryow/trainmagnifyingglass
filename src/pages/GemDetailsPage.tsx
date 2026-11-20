@@ -432,7 +432,7 @@ export default function GemDetailsPage() {
         )}
         <div className="flex items-center gap-2">
           <button onClick={handleToggleSave} className={isSaved ? 'btn-primary' : 'btn-outline'}>
-            <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
+            <Bookmark className={`h-4 w-4 ${isSaved ? 'animate-pop fill-current' : ''}`} />
             {isSaved ? 'Saved' : 'Save'}
           </button>
           {gem.status === 'published' && (
@@ -492,7 +492,7 @@ export default function GemDetailsPage() {
                     : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300'
                 }`}
               >
-                <span>{GEM_REACTION_EMOJIS[type]}</span>
+                <span className={mine ? 'inline-block animate-pop' : 'inline-block'}>{GEM_REACTION_EMOJIS[type]}</span>
                 <span>{GEM_REACTION_LABELS[type]}</span>
                 {count > 0 && <span className="text-xs text-stone-400">{count}</span>}
               </button>

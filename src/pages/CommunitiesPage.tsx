@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/States';
+import { GemArt } from '@/components/GemCard';
 import type { Community, CommunityType } from '@/types/database';
 import { Users, MapPin, Lock, Globe, Plus, Search, KeyRound } from 'lucide-react';
 
@@ -85,7 +86,7 @@ export default function CommunitiesPage() {
         {inviteError && <p role="alert" className="text-sm text-error-600 dark:text-error-400 sm:basis-full">{inviteError}</p>}
       </div>
 
-      <div className="flex gap-2">
+      <div role="tablist" aria-label="Communities" className="flex gap-2">
         <TabBtn active={tab === 'discover'} onClick={() => setTab('discover')}>Discover</TabBtn>
         <TabBtn active={tab === 'mine'} onClick={() => setTab('mine')}>My communities ({myCommunities.length})</TabBtn>
       </div>
@@ -107,11 +108,13 @@ export default function CommunitiesPage() {
           action={tab === 'mine' ? <button onClick={() => setTab('discover')} className="btn-primary">Browse communities</button> : <button onClick={() => navigate('/communities/new')} className="btn-primary">Create community</button>}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => (
             <button key={c.id} onClick={() => navigate(`/communities/${c.id}`)} className="card flex flex-col overflow-hidden text-left transition-shadow hover:shadow-card-hover">
-              <div className="h-28 shrink-0 bg-gradient-to-br from-primary-300 to-accent-400">
-                {c.cover_image_url && <img src={c.cover_image_url} alt="" className="h-full w-full object-cover" />}
+              <div className="h-32 shrink-0">
+                {c.cover_image_url
+                  ? <img src={c.cover_image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  : <GemArt id={c.id} icon="users" className="h-full w-full" />}
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <div className="mb-1.5 flex flex-wrap items-center gap-2">
@@ -119,7 +122,7 @@ export default function CommunitiesPage() {
                   <VisibilityBadge visibility={c.visibility} />
                   {c.general_area && <span className="flex items-center gap-1 text-xs text-stone-400"><MapPin className="h-3 w-3" />{c.general_area}</span>}
                 </div>
-                <h3 className="font-display text-base font-semibold break-words">{c.name}</h3>
+                <h3 className="break-words font-display text-lg font-bold">{c.name}</h3>
                 {c.description && <p className="mt-1 line-clamp-2 break-words text-sm text-stone-500 dark:text-stone-400">{c.description}</p>}
               </div>
             </button>
@@ -132,7 +135,7 @@ export default function CommunitiesPage() {
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${active ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}>
+    <button role="tab" aria-selected={active} onClick={onClick} className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${active ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'bg-white text-stone-600 shadow-card hover:text-stone-900 dark:bg-stone-900 dark:text-stone-300'}`}>
       {children}
     </button>
   );
@@ -143,7 +146,7 @@ function TypeBadge({ type }: { type: CommunityType }) {
 }
 function VisibilityBadge({ visibility }: { visibility: string }) {
   return visibility === 'private' ? (
-    <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"><Lock className="h-3 w-3" /> Private</span>
+    <span className="badge bg-citrine-100 text-citrine-700 dark:bg-citrine-500/15 dark:text-citrine-300"><Lock className="h-3 w-3" /> Private</span>
   ) : (
     <span className="badge bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300"><Globe className="h-3 w-3" /> Public</span>
   );

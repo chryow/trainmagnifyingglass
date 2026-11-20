@@ -93,11 +93,11 @@ export default function PrivacySettingsPage() {
   if (!profile) return null;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 pb-4">
       <button onClick={() => navigate('/profile')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><ArrowLeft className="h-4 w-4" /> Profile</button>
       <PageHeader title="Settings" subtitle="Control your privacy, notifications, and account." />
 
-      <form onSubmit={onSubmit} className="card divide-y divide-stone-200 dark:divide-stone-800" noValidate>
+      <form onSubmit={onSubmit} className="card divide-y divide-stone-100 dark:divide-stone-800" noValidate>
         <Section icon={<Shield className="h-5 w-5" />} title="Profile visibility">
           <p className="mb-3 text-sm text-stone-500 dark:text-stone-400">Choose who can view your profile.</p>
           <div className="flex gap-2">
@@ -135,7 +135,9 @@ export default function PrivacySettingsPage() {
 
         {error && <div role="alert" className="mx-5 my-3 rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{error}</div>}
 
-        <div className="flex items-center gap-3 p-5">
+        {/* Sticks above the mobile nav while there are unsaved changes */}
+        <div className={`flex items-center gap-3 p-5 ${dirty ? 'sticky bottom-24 z-10 rounded-b-3xl bg-white/95 backdrop-blur dark:bg-stone-900/95 lg:bottom-4' : ''}`}>
+          {dirty && <span className="mr-auto text-sm font-medium text-stone-500">Unsaved changes</span>}
           <button type="button" onClick={() => navigate('/profile')} className="btn-secondary">Cancel</button>
           <button type="submit" disabled={loading || !dirty} className="btn-primary">
             {loading ? <LoadingSpinner size={18} /> : saved ? <><Check className="h-4 w-4" /> Saved</> : 'Save settings'}
@@ -144,7 +146,7 @@ export default function PrivacySettingsPage() {
       </form>
 
       {/* Account section */}
-      <div className="card divide-y divide-stone-200 dark:divide-stone-800">
+      <div className="card divide-y divide-stone-100 dark:divide-stone-800">
         <Section icon={<KeyRound className="h-5 w-5" />} title="Password">
           <button onClick={() => navigate('/settings/password')} className="btn-outline text-sm">
             <Lock className="h-4 w-4" /> Change password
@@ -168,7 +170,7 @@ export default function PrivacySettingsPage() {
       </div>
 
       {/* Footer links */}
-      <div className="flex flex-wrap gap-x-4 gap-y-2 pb-4 text-xs text-stone-400">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 px-1 pb-4 text-sm text-stone-400">
         <button onClick={() => navigate('/privacy')} className="hover:text-stone-600 dark:hover:text-stone-300">Privacy Overview</button>
         <button onClick={() => navigate('/terms')} className="hover:text-stone-600 dark:hover:text-stone-300">Terms of Use</button>
         <button onClick={() => navigate('/guidelines')} className="hover:text-stone-600 dark:hover:text-stone-300">Community Guidelines</button>
@@ -183,10 +185,10 @@ export default function PrivacySettingsPage() {
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div className="p-5">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-stone-400">{icon}</span>
-        <h2 className="font-display text-base font-semibold">{title}</h2>
+    <div className="p-5 sm:p-6">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300">{icon}</span>
+        <h2 className="font-display text-lg font-bold">{title}</h2>
       </div>
       {children}
     </div>
@@ -194,18 +196,18 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 }
 function ToggleChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${active ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'border-stone-200 text-stone-600 dark:border-stone-700 dark:text-stone-300'}`}>
+    <button type="button" onClick={onClick} aria-pressed={active} className={`rounded-full border-2 px-4 py-2 text-sm font-semibold transition-colors ${active ? 'border-primary-400 bg-primary-50 text-primary-700 dark:border-primary-500 dark:bg-primary-500/15 dark:text-primary-300' : 'border-stone-200 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:text-stone-300'}`}>
       {children}
     </button>
   );
 }
 function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between py-2">
-      <span className="text-sm text-stone-700 dark:text-stone-300">{label}</span>
-      <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-primary-600' : 'bg-stone-300 dark:bg-stone-700'}`}>
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <span className="text-[15px] text-stone-700 dark:text-stone-300">{label}</span>
+      <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-gem' : 'bg-stone-200 dark:bg-stone-700'}`}>
+        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
       </button>
-    </label>
+    </div>
   );
 }

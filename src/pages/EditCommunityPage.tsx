@@ -177,8 +177,8 @@ export default function EditCommunityPage() {
       <PageHeader title="Edit community" subtitle="Manage your community's settings, visibility, and status." />
 
       {isArchived && (
-        <div className="card flex items-center gap-3 border-amber-200 p-4 dark:border-amber-800">
-          <Archive className="h-5 w-5 shrink-0 text-amber-500" />
+        <div className="card flex items-center gap-3 border-citrine-300 p-4 dark:border-citrine-700">
+          <Archive className="h-5 w-5 shrink-0 text-citrine-500" />
           <div className="flex-1">
             <p className="text-sm font-medium">This community is archived</p>
             <p className="text-xs text-stone-500">Archived communities preserve all content but prevent new activity.</p>
@@ -283,7 +283,7 @@ export default function EditCommunityPage() {
               <div className="space-y-2 rounded-xl bg-stone-50 p-3 dark:bg-stone-800/50">
                 {deleteCheck.gems > 0 || deleteCheck.members > 0 || deleteCheck.reports > 0 || deleteCheck.invitations > 0 ? (
                   <>
-                    <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                    <div className="flex items-center gap-2 text-sm text-citrine-500 dark:text-citrine-500">
                       <AlertTriangle className="h-4 w-4" />
                       Cannot delete — community has dependent records:
                     </div>

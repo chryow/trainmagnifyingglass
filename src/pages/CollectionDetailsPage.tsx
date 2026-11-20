@@ -8,6 +8,7 @@ import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import type { Collection, CollectionItem, Gem, CollectionVisibility } from '@/types/database';
 import { ArrowLeft, Lock, Globe, Users, Trash2, MapPin, Plus, Search, X, Edit3, Save, Flag } from 'lucide-react';
 import ReportModal from '@/components/ReportModal';
+import { GemCard, GemArt } from '@/components/GemCard';
 
 export default function CollectionDetailsPage() {
   const route = useRoute();
@@ -179,41 +180,49 @@ export default function CollectionDetailsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <button onClick={() => navigate('/collections')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><ArrowLeft className="h-4 w-4" /> Collections</button>
 
-      {/* Header */}
-      <div className="card overflow-hidden">
-        <div className="h-32 bg-gradient-to-br from-primary-300 to-accent-400">
-          {collection.cover_image_url && <img src={collection.cover_image_url} alt="" className="h-full w-full object-cover" />}
+      {/* Header: mosaic of the first gems in the collection */}
+      <section className="overflow-hidden rounded-4xl bg-white shadow-card dark:bg-stone-900">
+        <div className="grid h-44 grid-cols-4 gap-1 sm:h-56">
+          {[0, 1, 2].map((i) => {
+            const g = items[i]?.gem;
+            return (
+              <div key={i} className={i === 0 ? 'col-span-2 row-span-1 overflow-hidden' : 'overflow-hidden'}>
+                {g?.cover_image_url
+                  ? <img src={g.cover_image_url} alt="" className="h-full w-full object-cover" />
+                  : <GemArt id={g?.id ?? `${collection.id}-${i}`} icon={g?.category?.icon ?? 'sparkles'} className="h-full w-full" />}
+              </div>
+            );
+          })}
         </div>
-        <div className="p-5 sm:p-6">
-          <div className="mb-2 flex items-center gap-2">
-            <VisibilityBadge visibility={collection.visibility} />
-          </div>
-          <h1 className="font-display text-2xl font-semibold">{collection.name}</h1>
-          {collection.description && <p className="mt-2 text-stone-600 dark:text-stone-300">{collection.description}</p>}
+        <div className="p-5 sm:p-7">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-stone-500 dark:text-stone-400">
+            <VisibilityBadge visibility={collection.visibility} /> {items.length} gem{items.length === 1 ? '' : 's'}
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-extrabold leading-tight sm:text-4xl">{collection.name}</h1>
+          {collection.description && <p className="mt-2 max-w-prose text-stone-700 dark:text-stone-300">{collection.description}</p>}
           {collection.owner && (
-            <button onClick={() => navigate(`/profile/${collection.owner!.id}`)} className="mt-3 flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400">
+            <button onClick={() => navigate(`/profile/${collection.owner!.id}`)} className="mt-4 flex items-center gap-2 rounded-full bg-stone-50 py-1 pl-1 pr-3 text-sm font-medium hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700">
               <Avatar url={collection.owner.avatar_url ?? null} name={collection.owner.display_name} size={28} />
               <span>by {collection.owner.display_name}</span>
             </button>
           )}
 
-          {isOwner && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button onClick={startEditing} className="btn-outline"><Edit3 className="h-4 w-4" /> Edit</button>
-              <button onClick={() => setShowAdd((s) => !s)} className="btn-secondary"><Plus className="h-4 w-4" /> Add gems</button>
-              <button onClick={handleDelete} className="btn-danger ml-auto"><Trash2 className="h-4 w-4" /> Delete</button>
-            </div>
-          )}
-          {!isOwner && (
-            <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2">
+            {isOwner ? (
+              <>
+                <button onClick={() => setShowAdd((s) => !s)} className="btn-primary" aria-expanded={showAdd}><Plus className="h-4 w-4" /> Add gems</button>
+                <button onClick={startEditing} className="btn-outline"><Edit3 className="h-4 w-4" /> Edit</button>
+                <button onClick={handleDelete} className="btn-ghost ml-auto text-error-600 dark:text-error-400"><Trash2 className="h-4 w-4" /> Delete</button>
+              </>
+            ) : (
               <button onClick={() => setShowReport(true)} className="btn-outline"><Flag className="h-4 w-4" /> Report</button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Add gem search */}
       {showAdd && isOwner && (
@@ -249,38 +258,36 @@ export default function CollectionDetailsPage() {
       )}
 
       {/* Items */}
-      <div>
-        <h2 className="mb-3 section-title text-lg">Gems ({items.length})</h2>
-        {items.length === 0 ? (
-          <EmptyState icon={<Plus className="h-6 w-6" />} title="No gems yet" description={isOwner ? "Search and add gems to this collection." : "This collection is empty."} />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {items.map((item) => (
-              <div key={item.id} className="card overflow-hidden">
-                <button onClick={() => navigate(`/gems/${item.gem_id}`)} className="block w-full text-left">
-                  {item.gem?.cover_image_url ? (
-                    <img src={item.gem.cover_image_url} alt={item.gem.title} className="h-32 w-full object-cover" />
-                  ) : (
-                    <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30" />
-                  )}
-                  <div className="p-4">
-                    <h3 className="font-display text-base font-semibold">{item.gem?.title ?? 'Gem'}</h3>
-                    <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {item.gem?.place_name}</p>
-                    {item.note && <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">{item.note}</p>}
-                  </div>
+      {items.length === 0 ? (
+        <EmptyState
+          icon={<Plus className="h-6 w-6" />}
+          title="This collection is empty"
+          description={isOwner ? 'Add gems with the button above, or tap Collection on any gem page.' : 'Nothing has been added yet.'}
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <div key={item.id} className="relative">
+              {item.gem ? (
+                <GemCard gem={item.gem} onOpen={() => navigate(`/gems/${item.gem_id}`)} />
+              ) : (
+                <div className="card p-4 text-sm text-stone-500">This gem is no longer available.</div>
+              )}
+              {item.note && <p className="mt-2 px-2 text-sm italic text-stone-500 dark:text-stone-400">“{item.note}”</p>}
+              {isOwner && (
+                <button
+                  onClick={() => handleRemoveItem(item)}
+                  className="absolute right-3 top-3 rounded-full bg-white/90 p-1.5 text-stone-600 shadow-card backdrop-blur hover:text-error-600 dark:bg-stone-900/90 dark:text-stone-300"
+                  aria-label={`Remove ${item.gem?.title ?? 'gem'} from collection`}
+                  title="Remove from collection"
+                >
+                  <X className="h-4 w-4" />
                 </button>
-                {isOwner && (
-                  <div className="border-t border-stone-100 px-4 py-2 dark:border-stone-800">
-                    <button onClick={() => handleRemoveItem(item)} className="flex items-center gap-1 text-xs text-error-600 hover:text-error-700 dark:text-error-400">
-                      <Trash2 className="h-3 w-3" /> Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {showReport && collection && (
         <ReportModal
           targetType="collection"
