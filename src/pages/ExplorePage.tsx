@@ -3,9 +3,11 @@ import { supabase } from '@/lib/supabase';
 import { useNavigate, useRoute } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner, SkeletonCard } from '@/components/States';
+import { GemCard } from '@/components/GemCard';
+import { GemsMap } from '@/components/Map';
 import type { Gem, Category, Community, VerificationStatus } from '@/types/database';
 import { VERIFICATION_STATUS_LABELS } from '@/types/database';
-import { Search, MapPin, Sparkles, Filter, X, RotateCcw, Globe, Lock } from 'lucide-react';
+import { Search, Sparkles, Filter, X, RotateCcw, Globe, Lock, List, Map as MapIcon } from 'lucide-react';
 
 type SortMode = 'recent' | 'confirmed';
 
@@ -40,6 +42,13 @@ export default function ExplorePage() {
   const [error, setError] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [view, setView] = useState<'list' | 'map'>(route.params.view === 'map' ? 'map' : 'list');
+
+  const mapPoints = useMemo(
+    () => gems.filter((g) => g.lat != null && g.lng != null).map((g) => ({ id: g.id, lat: g.lat as number, lng: g.lng as number, title: g.title })),
+    [gems],
+  );
+  const openGem = useCallback((id: string) => navigate(`/gems/${id}`), [navigate]);
 
   const [filters, setFilters] = useState<Filters>(() => ({
     ...DEFAULT_FILTERS,
@@ -81,8 +90,10 @@ export default function ExplorePage() {
       .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
       .eq('status', 'published');
 
-    if (filters.search.trim()) {
-      query = query.or(`title.ilike.%${filters.search.trim()}%,place_name.ilike.%${filters.search.trim()}%,description.ilike.%${filters.search.trim()}%`);
+    // Strip characters that are syntax in PostgREST's or() filter
+    const term = filters.search.trim().replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (term) {
+      query = query.or(`title.ilike.%${term}%,place_name.ilike.%${term}%,description.ilike.%${term}%`);
     }
     if (filters.categoryId) {
       const cat = categories.find((c) => c.slug === filters.categoryId);
@@ -156,7 +167,26 @@ export default function ExplorePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Explore gems" subtitle="Discover hidden gems shared across all communities you can access." />
+      <PageHeader
+        title="Explore"
+        subtitle="Every gem you can see, across all your communities."
+        action={
+          <div className="flex shrink-0 rounded-2xl bg-stone-100 p-1 dark:bg-stone-800" role="tablist" aria-label="View">
+            {(['list', 'map'] as const).map((v) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => setView(v)}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${view === v ? 'bg-white text-stone-900 shadow-card dark:bg-stone-900 dark:text-white' : 'text-stone-500'}`}
+              >
+                {v === 'list' ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
+                {v === 'list' ? 'List' : 'Map'}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* Search bar */}
       <div className="relative">
@@ -271,35 +301,24 @@ export default function ExplorePage() {
         />
       ) : (
         <>
-          <p className="text-sm text-stone-400">{gems.length} gem{gems.length !== 1 ? 's' : ''}{hasMore ? '+' : ''}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {gems.map((g) => (
-              <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
-                {g.cover_image_url ? (
-                  <img src={g.cover_image_url} alt={g.title} className="h-36 w-full object-cover" />
-                ) : (
-                  <div className="flex h-36 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30">
-                    <Sparkles className="h-6 w-6 text-primary-400" />
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    {g.category && <span className="badge bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{g.category.name}</span>}
-                    {g.verification_status && g.verification_status !== 'new' && (
-                      <span className="badge bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300">{VERIFICATION_STATUS_LABELS[g.verification_status]}</span>
-                    )}
-                  </div>
-                  <h3 className="font-display text-base font-semibold">{g.title}</h3>
-                  <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}</p>
-                  {g.area && <p className="text-xs text-stone-400">{g.area}</p>}
-                  <div className="mt-2 flex items-center gap-2 text-xs text-stone-400">
-                    <span>{g.community?.name}</span>
-                    {g.author && <><span>·</span><span>{g.author.display_name}</span></>}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
+          {view === 'map' ? (
+            <div className="space-y-2">
+              <GemsMap points={mapPoints} onSelect={openGem} className="h-[60vh] min-h-[22rem]" />
+              <p className="text-sm text-stone-400">
+                {mapPoints.length} of {gems.length}{hasMore ? '+' : ''} gems have a map pin.
+                {mapPoints.length < gems.length && ' Authors can add one by editing their gem.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-stone-400">{gems.length} gem{gems.length !== 1 ? 's' : ''}{hasMore ? '+' : ''}</p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {gems.map((g) => (
+                  <GemCard key={g.id} gem={g} onOpen={() => navigate(`/gems/${g.id}`)} />
+                ))}
+              </div>
+            </>
+          )}
 
           {hasMore && !loading && (
             <div className="flex justify-center pt-2">

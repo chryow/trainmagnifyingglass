@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
@@ -7,13 +7,15 @@ import { GemArt, CategoryIcon } from '@/components/GemCard';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { uploadGemImage, validateImageFile, deleteGemImage } from '@/lib/upload';
 import AccuracyPanel from '@/components/AccuracyPanel';
+import { GemsMap, LocationPicker, type Coords } from '@/components/Map';
 import ReportModal from '@/components/ReportModal';
+import SaveToCollectionSheet from '@/components/SaveToCollectionSheet';
 import type { Gem, GemImage, Category, Comment, GemReaction, GemReactionType } from '@/types/database';
 import { GEM_REACTION_TYPES, GEM_REACTION_LABELS, GEM_REACTION_EMOJIS } from '@/types/database';
 import {
   ArrowLeft, MapPin, Edit3, Save, X, Trash2, Send, ImagePlus,
   Lock, Sparkles as SparkIcon, Calendar, Bookmark, MessageCircle,
-  Heart, ChevronDown, Reply, CornerDownRight, Flag
+  Heart, ChevronDown, Reply, CornerDownRight, Flag, FolderPlus
 } from 'lucide-react';
 
 export default function GemDetailsPage() {
@@ -39,6 +41,7 @@ export default function GemDetailsPage() {
   const [categoryId, setCategoryId] = useState('');
   const [area, setArea] = useState('');
   const [address, setAddress] = useState('');
+  const [coords, setCoords] = useState<Coords | null>(null);
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
@@ -52,6 +55,7 @@ export default function GemDetailsPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [showReport, setShowReport] = useState(false);
+  const [showCollections, setShowCollections] = useState(false);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
   // `silent` refreshes data in place (after a like/comment/save) without
@@ -96,6 +100,12 @@ export default function GemDetailsPage() {
   useEffect(() => { load(); }, [load]);
 
   const isAuthor = gem?.author_id === profile?.id;
+  const closeCollections = useCallback(() => setShowCollections(false), []);
+  const hasCoords = gem?.lat != null && gem?.lng != null;
+  const mapPoints = useMemo(
+    () => (gem && gem.lat != null && gem.lng != null ? [{ id: gem.id, lat: gem.lat, lng: gem.lng, title: gem.place_name }] : []),
+    [gem],
+  );
 
   const startEditing = () => {
     if (!gem) return;
@@ -104,6 +114,7 @@ export default function GemDetailsPage() {
     setCategoryId(gem.category_id ?? '');
     setArea(gem.area ?? '');
     setAddress(gem.address ?? '');
+    setCoords(gem.lat != null && gem.lng != null ? { lat: gem.lat, lng: gem.lng } : null);
     setDescription(gem.description ?? '');
     setCoverImage(gem.cover_image_url);
     setFormError(null);
@@ -122,6 +133,8 @@ export default function GemDetailsPage() {
       category_id: categoryId || null,
       area: area.trim() || null,
       address: address.trim() || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
       description: description.trim() || null,
       cover_image_url: coverImage,
     }).eq('id', gem.id);
@@ -326,6 +339,10 @@ export default function GemDetailsPage() {
             </div>
           </div>
           <div>
+            <label className="label">Location on the map</label>
+            <LocationPicker value={coords} onChange={setCoords} suggestedQuery={[placeName, area].filter((s) => s.trim()).join(', ')} />
+          </div>
+          <div>
             <label className="label">Description</label>
             <textarea className="input min-h-[100px] resize-y" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} />
           </div>
@@ -405,8 +422,13 @@ export default function GemDetailsPage() {
             <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
             {isSaved ? 'Saved' : 'Save'}
           </button>
+          {gem.status === 'published' && (
+            <button onClick={() => setShowCollections(true)} className="btn-outline" title="Add to a collection">
+              <FolderPlus className="h-4 w-4" /> <span className="hidden sm:inline">Collection</span>
+            </button>
+          )}
           {!isAuthor && (
-            <button onClick={() => setShowReport(true)} className="btn-outline" title="Report this gem">
+            <button onClick={() => setShowReport(true)} className="btn-outline" title="Report this gem" aria-label="Report this gem">
               <Flag className="h-4 w-4" />
             </button>
           )}
@@ -419,8 +441,11 @@ export default function GemDetailsPage() {
       )}
 
       {/* Where to find it */}
+      {hasCoords && <GemsMap points={mapPoints} className="h-64 sm:h-72" />}
       <a
-        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([gem.place_name, gem.address ?? gem.area].filter(Boolean).join(', '))}`}
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          hasCoords ? `${gem.lat},${gem.lng}` : [gem.place_name, gem.address ?? gem.area].filter(Boolean).join(', '),
+        )}`}
         target="_blank"
         rel="noopener noreferrer"
         className="card group flex items-center gap-4 p-4 transition-shadow hover:shadow-card-hover"
@@ -567,6 +592,10 @@ export default function GemDetailsPage() {
       )}
 
       {formError && <div role="alert" className="rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{formError}</div>}
+
+      {showCollections && gem && profile && (
+        <SaveToCollectionSheet gemId={gem.id} userId={profile.id} onClose={closeCollections} />
+      )}
 
       {showReport && gem && (
         <ReportModal

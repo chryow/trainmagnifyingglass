@@ -5,6 +5,7 @@ import { useNavigate, useRoute } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { LoadingSpinner, EmptyState } from '@/components/States';
 import { validateImageFile, uploadGemImage } from '@/lib/upload';
+import { LocationPicker, type Coords } from '@/components/Map';
 import type { Community, Category, GemStatus } from '@/types/database';
 import { ArrowLeft, Save, Send, ImagePlus, X, Users } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export default function CreateGemPage() {
   const [placeName, setPlaceName] = useState('');
   const [area, setArea] = useState('');
   const [address, setAddress] = useState('');
+  const [coords, setCoords] = useState<Coords | null>(null);
   const [description, setDescription] = useState('');
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -81,6 +83,8 @@ export default function CreateGemPage() {
         place_name: placeName.trim(),
         area: area.trim() || null,
         address: address.trim() || null,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
         description: description.trim() || null,
         cover_image_url: null,
         status: publishStatus,
@@ -187,6 +191,12 @@ export default function CreateGemPage() {
             <label htmlFor="address" className="label">Address <span className="text-stone-400">(optional)</span></label>
             <input id="address" className="input" placeholder="Street address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} />
           </div>
+        </div>
+
+        <div>
+          <label className="label">Pin it on the map <span className="text-stone-400">(optional)</span></label>
+          <p className="mb-3 text-sm text-stone-500 dark:text-stone-400">Helps people find it and puts it on the Explore map.</p>
+          <LocationPicker value={coords} onChange={setCoords} suggestedQuery={[placeName, area].filter((s) => s.trim()).join(', ')} />
         </div>
 
         <div>
