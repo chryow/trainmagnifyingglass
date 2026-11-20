@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
+import { friendlyAuthError } from '@/lib/authErrors';
 import { useNavigate, useRoute } from '@/lib/router';
 import { Logo, LogoWithText } from '@/components/Logo';
 import { LoadingSpinner } from '@/components/States';
@@ -30,7 +31,7 @@ export default function LoginPage() {
             ? 'This account has been deleted or deactivated.'
             : /email not confirmed/i.test(signInError.message)
               ? 'Please confirm your email first. Check your inbox for the link.'
-              : signInError.message,
+              : friendlyAuthError(signInError),
       );
       return;
     }

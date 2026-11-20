@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
+import { friendlyAuthError } from '@/lib/authErrors';
 import { useNavigate } from '@/lib/router';
 import { Logo } from '@/components/Logo';
 import { LoadingSpinner } from '@/components/States';
@@ -23,7 +24,7 @@ export default function ResetPasswordPage() {
     });
     setLoading(false);
     if (resetError) {
-      setError(resetError.message);
+      setError(friendlyAuthError(resetError));
       return;
     }
     setSent(true);
