@@ -127,7 +127,7 @@ export default function RegisterPage() {
     return (
       <div className="auth-bg flex min-h-screen items-center justify-center px-4 py-10">
         <div className="card w-full max-w-md animate-slide-up space-y-4 p-8 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-fuchsia-500 text-white shadow-glow">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gem text-white shadow-glow">
             <MailCheck className="h-8 w-8" />
           </div>
           <h1 className="font-display text-2xl font-bold">Check your email</h1>

@@ -169,7 +169,7 @@ export default function DiscoverPage() {
                 onClick={() => navigate(`/explore?category=${cat.slug}`)}
                 className="group flex items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-card transition-shadow hover:shadow-card-hover dark:bg-stone-900"
               >
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${CATEGORY_TINTS[i % CATEGORY_TINTS.length]}`}>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${CATEGORY_TINTS[i % CATEGORY_TINTS.length]}`}>
                   <CategoryIcon icon={cat.icon} className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-semibold">{cat.name}</span>
@@ -222,7 +222,15 @@ export default function DiscoverPage() {
   );
 }
 
-const CATEGORY_TINTS = ['bg-primary-500', 'bg-accent-600', 'bg-[#b23be6]', 'bg-success-500', 'bg-citrine-500', 'bg-[#16b6c9]'];
+// Soft tinted chips with matching icon colour, instead of solid saturated blocks
+const CATEGORY_TINTS = [
+  'bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300',
+  'bg-accent-100 text-accent-700 dark:bg-accent-500/15 dark:text-accent-300',
+  'bg-[#efe8f8] text-[#7a5aa8] dark:bg-[#8f74c2]/15 dark:text-[#c3b1e3]',
+  'bg-[#e4f2ec] text-[#4c8a72] dark:bg-[#6fae96]/15 dark:text-[#a7d4c2]',
+  'bg-citrine-100 text-citrine-700 dark:bg-citrine-500/15 dark:text-citrine-300',
+  'bg-[#e3f1f3] text-[#4a8a95] dark:bg-[#6fb3bf]/15 dark:text-[#a8d6de]',
+];
 
 function SectionHeading({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
