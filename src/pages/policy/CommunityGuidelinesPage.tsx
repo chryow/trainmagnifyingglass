@@ -2,7 +2,7 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function CommunityGuidelinesPage() {
   return (
-    <PolicyPage title="Community Guidelines" subtitle="How we keep this community welcoming and useful.">
+    <PolicyPage title="Community guidelines" subtitle="How we keep this community welcoming and useful.">
       <h2>Be kind and respectful</h2>
       <p>Treat other members with respect. No harassment, bullying, hate speech, or personal attacks. Disagree about places, not people.</p>
 

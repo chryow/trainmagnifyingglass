@@ -2,7 +2,16 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function DeletionInfoPage() {
   return (
-    <PolicyPage title="Account Deletion" subtitle="What happens when you delete your account.">
+    <PolicyPage
+      title="Account deletion"
+      subtitle="What happens when you delete your account."
+      summary={[
+        'Delete your account any time from Settings.',
+        'Private data (saved gems, private collections, follows, notifications, profile details) is removed.',
+        'Gems and comments you published stay, shown as “Deleted User”.',
+        'Deletion is permanent and can’t be undone.',
+      ]}
+    >
       <h2>How to delete your account</h2>
       <p>You can delete your account at any time from Settings → Delete my account. You will be asked to enter your password, type a confirmation phrase, and acknowledge what will happen.</p>
 

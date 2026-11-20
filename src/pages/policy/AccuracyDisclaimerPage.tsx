@@ -2,7 +2,7 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function AccuracyDisclaimerPage() {
   return (
-    <PolicyPage title="Accuracy Disclaimer" subtitle="How community-contributed information works and its limitations.">
+    <PolicyPage title="Accuracy" subtitle="How community-contributed information works and its limitations.">
       <h2>Community-sourced content</h2>
       <p>The places, descriptions, and details on this platform are contributed by community members. While many are accurate and helpful, we cannot guarantee that all information is correct, current, or complete.</p>
 
