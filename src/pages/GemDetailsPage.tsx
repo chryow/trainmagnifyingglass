@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
+import { GemArt, CategoryIcon } from '@/components/GemCard';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
 import { uploadGemImage, validateImageFile, deleteGemImage } from '@/lib/upload';
 import AccuracyPanel from '@/components/AccuracyPanel';
@@ -53,9 +54,12 @@ export default function GemDetailsPage() {
   const [showReport, setShowReport] = useState(false);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // `silent` refreshes data in place (after a like/comment/save) without
+  // swapping the page for a spinner and losing the scroll position.
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!gemId || !profile) return;
-    setLoading(true);
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const { data, error: gErr } = await supabase
@@ -63,7 +67,7 @@ export default function GemDetailsPage() {
         .select('*, author:profiles(id, username, display_name, avatar_url, allow_comments), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
         .eq('id', gemId)
         .maybeSingle();
-      if (gErr || !data) { setError(true); return; }
+      if (gErr || !data) { if (!silent) setError(true); return; }
       const g = data as Gem;
       setGem(g);
 
@@ -83,9 +87,9 @@ export default function GemDetailsPage() {
       setIsSaved(!!savedRes.data);
       setComments(buildCommentTree((commentsRes.data as Comment[] | null) ?? []));
     } catch {
-      setError(true);
+      if (!silent) setError(true);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [gemId, profile]);
 
@@ -128,7 +132,7 @@ export default function GemDetailsPage() {
       return;
     }
     setEditing(false);
-    await load();
+    await load({ silent: true });
   };
 
   const handlePublish = async () => {
@@ -141,7 +145,7 @@ export default function GemDetailsPage() {
       else setFormError(pubErr.message);
       return;
     }
-    await load();
+    await load({ silent: true });
   };
 
   const handleDelete = async () => {
@@ -161,7 +165,7 @@ export default function GemDetailsPage() {
       const { url } = await uploadGemImage(gem.id, file);
       setCoverImage(url);
       await supabase.from('gems').update({ cover_image_url: url }).eq('id', gem.id);
-      await load();
+      await load({ silent: true });
     } catch {
       setImageError('Upload failed. Please try again.');
     }
@@ -177,7 +181,7 @@ export default function GemDetailsPage() {
       const { url } = await uploadGemImage(gem.id, file);
       const nextOrder = (images[images.length - 1]?.sort_order ?? 0) + 1;
       await supabase.from('gem_images').insert({ gem_id: gem.id, image_url: url, sort_order: nextOrder });
-      await load();
+      await load({ silent: true });
     } catch {
       setImageError('Upload failed. Please try again.');
     }
@@ -190,7 +194,7 @@ export default function GemDetailsPage() {
       try { await deleteGemImage(path); } catch { /* ignore storage errors */ }
     }
     await supabase.from('gem_images').delete().eq('id', img.id);
-    await load();
+    await load({ silent: true });
   };
 
   // --- Social handlers ---
@@ -198,11 +202,11 @@ export default function GemDetailsPage() {
   const handleToggleSave = async () => {
     if (!gem || !profile) return;
     if (isSaved) {
-      await supabase.from('saved_gems').delete().eq('gem_id', gem.id).eq('user_id', profile.id);
-      setIsSaved(false);
+      const { error: delErr } = await supabase.from('saved_gems').delete().eq('gem_id', gem.id).eq('user_id', profile.id);
+      if (!delErr) setIsSaved(false);
     } else {
-      await supabase.from('saved_gems').insert({ gem_id: gem.id, user_id: profile.id });
-      setIsSaved(true);
+      const { error: insErr } = await supabase.from('saved_gems').insert({ gem_id: gem.id, user_id: profile.id });
+      if (!insErr) setIsSaved(true);
     }
   };
 
@@ -214,7 +218,7 @@ export default function GemDetailsPage() {
     } else {
       await supabase.from('gem_reactions').insert({ gem_id: gem.id, user_id: profile.id, type });
     }
-    await load();
+    await load({ silent: true });
   };
 
   const handleSubmitComment = async () => {
@@ -231,7 +235,8 @@ export default function GemDetailsPage() {
       return;
     }
     setCommentBody('');
-    await load();
+    setFormError(null);
+    await load({ silent: true });
   };
 
   const handleSubmitReply = async (parentId: string) => {
@@ -251,13 +256,13 @@ export default function GemDetailsPage() {
     setReplyBody('');
     setReplyingTo(null);
     setExpandedReplies((prev) => new Set(prev).add(parentId));
-    await load();
+    await load({ silent: true });
   };
 
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm('Delete this comment?')) return;
     await supabase.from('comments').delete().eq('id', commentId);
-    await load();
+    await load({ silent: true });
   };
 
   const toggleReplies = (commentId: string) => {
@@ -361,40 +366,42 @@ export default function GemDetailsPage() {
       </button>
 
       {/* Cover image */}
-      {gem.cover_image_url && (
-        <div className="overflow-hidden rounded-2xl">
-          <img src={gem.cover_image_url} alt={gem.title} className="h-56 w-full object-cover sm:h-72" />
+      {/* Hero: cover photo (or faceted art) with the title set over it */}
+      <div className="relative -mx-4 overflow-hidden sm:mx-0 sm:rounded-4xl">
+        <div className="h-80 sm:h-[26rem]">
+          {gem.cover_image_url
+            ? <img src={gem.cover_image_url} alt={gem.title} className="h-full w-full object-cover" />
+            : <GemArt id={gem.id} icon={gem.category?.icon} className="h-full w-full" />}
         </div>
-      )}
-
-      {/* Header */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {gem.status === 'draft' && <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>}
-          {gem.community?.visibility === 'private' && <span className="badge bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300"><Lock className="h-3 w-3" /> Private community</span>}
-          {gem.category && <span className="badge bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{gem.category.name}</span>}
-        </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{gem.title}</h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-stone-500 dark:text-stone-400">
-          <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {gem.place_name}</span>
-          {gem.area && <span className="flex items-center gap-1">{gem.area}</span>}
-          <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {new Date(gem.created_at).toLocaleDateString()}</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/30 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 space-y-3 p-5 text-white sm:p-8">
+          <div className="flex flex-wrap items-center gap-2">
+            {gem.status === 'draft' && <span className="badge bg-citrine-400 text-stone-900">Draft</span>}
+            {gem.community?.visibility === 'private' && <span className="badge bg-white/20 text-white backdrop-blur"><Lock className="h-3 w-3" /> Private community</span>}
+            {gem.category && <span className="badge bg-white/20 text-white backdrop-blur"><CategoryIcon icon={gem.category.icon} className="h-3 w-3" /> {gem.category.name}</span>}
+          </div>
+          <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-5xl">{gem.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/85">
+            <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {gem.place_name}{gem.area ? `, ${gem.area}` : ''}</span>
+            <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {new Date(gem.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
         </div>
       </div>
 
       {/* Author + actions bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {gem.author && (
-          <button onClick={() => navigate(`/profile/${gem.author!.id}`)} className="flex items-center gap-3 rounded-xl p-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800">
-            <Avatar url={gem.author.avatar_url ?? null} name={gem.author.display_name} size={36} />
+          <button onClick={() => navigate(`/profile/${gem.author!.id}`)} className="flex items-center gap-3 rounded-2xl p-1.5 pr-3 text-left hover:bg-stone-100 dark:hover:bg-stone-800">
+            <Avatar url={gem.author.avatar_url ?? null} name={gem.author.display_name} size={44} />
             <div>
-              <p className="text-sm font-medium">{gem.author.display_name}</p>
+              <p className="text-xs text-stone-400">Shared by</p>
+              <p className="text-sm font-semibold">{gem.author.display_name}</p>
               <p className="text-xs text-stone-400">@{gem.author.username}</p>
             </div>
           </button>
         )}
         <div className="flex items-center gap-2">
-          <button onClick={handleToggleSave} className={`btn-outline ${isSaved ? 'text-primary-600 dark:text-primary-400' : ''}`}>
+          <button onClick={handleToggleSave} className={isSaved ? 'btn-primary' : 'btn-outline'}>
             <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
             {isSaved ? 'Saved' : 'Save'}
           </button>
@@ -408,28 +415,30 @@ export default function GemDetailsPage() {
 
       {/* Description */}
       {gem.description && (
-        <div className="card p-5">
-          <p className="whitespace-pre-line text-stone-700 dark:text-stone-300">{gem.description}</p>
-        </div>
+        <p className="max-w-prose whitespace-pre-line text-lg leading-relaxed text-stone-700 dark:text-stone-300">{gem.description}</p>
       )}
 
-      {/* Address */}
-      {gem.address && (
-        <div className="card flex items-start gap-3 p-5">
-          <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" />
-          <div>
-            <p className="text-sm font-medium">Address</p>
-            <p className="text-sm text-stone-500 dark:text-stone-400">{gem.address}</p>
-          </div>
+      {/* Where to find it */}
+      <a
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([gem.place_name, gem.address ?? gem.area].filter(Boolean).join(', '))}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="card group flex items-center gap-4 p-4 transition-shadow hover:shadow-card-hover"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent-600 text-white"><MapPin className="h-5 w-5" /></span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">{gem.place_name}</p>
+          <p className="truncate text-sm text-stone-500 dark:text-stone-400">{gem.address ?? gem.area ?? 'Open in Google Maps'}</p>
         </div>
-      )}
+        <span className="text-sm font-semibold text-accent-600 group-hover:underline dark:text-accent-400">Directions</span>
+      </a>
 
       {/* Phase 4: Information Accuracy Panel */}
-      <AccuracyPanel gem={gem} isAuthor={isAuthor} onGemUpdated={load} />
+      <AccuracyPanel gem={gem} isAuthor={isAuthor} onGemUpdated={() => load({ silent: true })} />
 
       {/* Reactions */}
-      <div className="card p-5">
-        <h2 className="mb-3 font-display text-base font-semibold">Reactions</h2>
+      <div>
+        <h2 className="mb-3 font-display text-xl font-bold">Your reaction</h2>
         <div className="flex flex-wrap gap-2">
           {GEM_REACTION_TYPES.map((type) => {
             const count = reactions.filter((r) => r.type === type).length;
@@ -438,10 +447,11 @@ export default function GemDetailsPage() {
               <button
                 key={type}
                 onClick={() => handleReact(type)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                aria-pressed={mine}
+                className={`flex items-center gap-1.5 rounded-full border-2 px-3.5 py-2 text-sm font-semibold transition-all active:scale-95 ${
                   mine
-                    ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
-                    : 'border-stone-200 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:text-stone-300'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
+                    : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300'
                 }`}
               >
                 <span>{GEM_REACTION_EMOJIS[type]}</span>
@@ -459,10 +469,10 @@ export default function GemDetailsPage() {
           <h2 className="section-title text-lg">Photos</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {images.map((img) => (
-              <div key={img.id} className="group relative overflow-hidden rounded-xl">
+              <div key={img.id} className="group relative overflow-hidden rounded-2xl">
                 <img src={img.image_url} alt="" className="aspect-square w-full object-cover" />
                 {isAuthor && (
-                  <button type="button" onClick={() => handleDeleteImage(img)} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  <button type="button" onClick={() => handleDeleteImage(img)} aria-label="Delete photo" className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1.5 text-white transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -475,6 +485,11 @@ export default function GemDetailsPage() {
       {/* Add image (author only) */}
       {isAuthor && (
         <div>
+          {route.params.cover === 'failed' && !gem.cover_image_url && (
+            <p role="status" className="mb-3 rounded-xl bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:bg-warning-900/30 dark:text-warning-300">
+              Your gem was saved, but the cover image didn't upload. Use Edit to add a cover image.
+            </p>
+          )}
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-stone-300 p-4 text-stone-500 hover:border-primary-400 dark:border-stone-700">
             <ImagePlus className="h-5 w-5" />
             <span className="text-sm">Add a photo</span>

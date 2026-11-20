@@ -15,6 +15,9 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  /** True after the user arrives from a password-reset email link */
+  recovering: boolean;
+  clearRecovery: () => void;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -25,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recovering, setRecovering] = useState(false);
 
   const loadProfile = async (uid: string) => {
     const { data, error } = await supabase
@@ -54,14 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       const uid = newSession?.user?.id;
       if (uid) {
-        (async () => {
+        // Defer Supabase calls out of the auth callback: awaiting them inside
+        // onAuthStateChange can deadlock the auth client (documented pitfall).
+        setTimeout(async () => {
+          if (!mounted) return;
           await loadProfile(uid);
-          setLoading(false);
-        })();
+          if (mounted) setLoading(false);
+        }, 0);
       } else {
         setProfile(null);
         setLoading(false);
@@ -78,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session?.user?.id) await loadProfile(session.user.id);
   };
 
+  const clearRecovery = () => setRecovering(false);
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
@@ -85,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, user: session?.user ?? null, profile, loading, refreshProfile, signOut }),
-    [session, profile, loading],
+    () => ({ session, user: session?.user ?? null, profile, loading, recovering, clearRecovery, refreshProfile, signOut }),
+    [session, profile, loading, recovering],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

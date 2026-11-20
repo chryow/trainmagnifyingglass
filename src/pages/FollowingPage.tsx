@@ -21,10 +21,11 @@ export default function FollowingPage() {
     setError(false);
     try {
       // Get IDs of users I follow
-      const { data: follows } = await supabase
+      const { data: follows, error: fErr } = await supabase
         .from('follows')
         .select('followee_id')
         .eq('follower_id', profile.id);
+      if (fErr) throw fErr;
       const followeeIds = ((follows as { followee_id: string }[] | null) ?? []).map((f) => f.followee_id);
       if (followeeIds.length === 0) {
         setGems([]);
@@ -49,6 +50,7 @@ export default function FollowingPage() {
           .order('updated_at', { ascending: false })
           .limit(10),
       ]);
+      if (gemsRes.error || collectionsRes.error) throw gemsRes.error ?? collectionsRes.error;
       setGems((gemsRes.data as Gem[] | null) ?? []);
       setCollections((collectionsRes.data as Collection[] | null) ?? []);
     } catch {

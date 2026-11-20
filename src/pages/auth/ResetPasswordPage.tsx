@@ -18,7 +18,8 @@ export default function ResetPasswordPage() {
     setError(null);
     setLoading(true);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/#/reset-password`,
+      // Root URL: the app picks up the PASSWORD_RECOVERY event and opens /update-password
+      redirectTo: `${window.location.origin}/`,
     });
     setLoading(false);
     if (resetError) {
@@ -29,12 +30,12 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-primary-50/60 to-stone-50 dark:from-stone-900 dark:to-stone-950">
+    <div className="auth-bg flex min-h-screen flex-col">
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-md animate-slide-up">
           <div className="mb-8 flex flex-col items-center gap-3 text-center">
             <Logo className="h-14 w-14" />
-            <h1 className="font-display text-2xl font-semibold">Reset your password</h1>
+            <h1 className="font-display text-3xl font-bold">Reset your password</h1>
           </div>
 
           {sent ? (

@@ -19,8 +19,8 @@ export default function ChangePasswordPage() {
     if (loading) return;
     setError(null);
 
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -93,7 +93,7 @@ export default function ChangePasswordPage() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={8}
               autoComplete="new-password"
             />
           </div>

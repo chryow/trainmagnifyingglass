@@ -71,27 +71,15 @@ export default function CommunityDetailsPage() {
     setJoining(true);
     setJoinError(null);
     if (isPrivate) {
-      // Validate invite code
-      const { data: inv, error: invErr } = await supabase
-        .from('community_invitations')
-        .select('*')
-        .eq('code', joinCode.trim())
-        .eq('community_id', community.id)
-        .is('used_by', null)
-        .maybeSingle();
-      if (invErr || !inv) {
+      // Invitees can't read invitations or insert into private communities
+      // directly (RLS), so redeem the code server-side.
+      const { data, error: rpcErr } = await supabase.rpc('redeem_invitation', { p_code: joinCode.trim() });
+      const res = data as { success?: boolean; error?: string } | null;
+      if (rpcErr || !res?.success) {
         setJoining(false);
-        setJoinError('Invalid or already-used invitation code.');
+        setJoinError(res?.error ?? rpcErr?.message ?? 'Could not join with that code.');
         return;
       }
-      if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
-        setJoining(false);
-        setJoinError('This invitation has expired.');
-        return;
-      }
-      const { error: joinErr } = await supabase.from('community_members').insert({ community_id: community.id, user_id: profile.id });
-      if (joinErr) { setJoining(false); setJoinError(joinErr.message); return; }
-      await supabase.from('community_invitations').update({ used_by: profile.id, used_at: new Date().toISOString() }).eq('id', inv.id);
     } else {
       const { error: joinErr } = await supabase.from('community_members').insert({ community_id: community.id, user_id: profile.id });
       if (joinErr) { setJoining(false); setJoinError(joinErr.message); return; }
