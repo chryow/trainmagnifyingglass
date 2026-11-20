@@ -47,7 +47,7 @@ export default function CommunitiesPage() {
       ]);
       if (publicRes.error || mineRes.error) throw publicRes.error ?? mineRes.error;
       setCommunities((publicRes.data as Community[] | null) ?? []);
-      const mine = (mineRes.data as { community: Community }[] | null) ?? [];
+      const mine = (mineRes.data as unknown as { community: Community }[] | null) ?? [];
       setMyCommunities(mine.map((m) => m.community).filter(Boolean));
     } catch {
       setError(true);
