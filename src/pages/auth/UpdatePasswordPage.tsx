@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
+import { friendlyAuthError } from '@/lib/authErrors';
 import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { Logo } from '@/components/Logo';
@@ -28,7 +29,7 @@ export default function UpdatePasswordPage() {
     setLoading(true);
     const { error: updErr } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (updErr) { setError(updErr.message); return; }
+    if (updErr) { setError(friendlyAuthError(updErr)); return; }
     setDone(true);
   };
 

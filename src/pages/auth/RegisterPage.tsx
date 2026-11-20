@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
+import { friendlyAuthError } from '@/lib/authErrors';
 import { useNavigate } from '@/lib/router';
 import { Logo } from '@/components/Logo';
 import { LoadingSpinner } from '@/components/States';
@@ -101,7 +102,7 @@ export default function RegisterPage() {
       setError(
         /database error saving new user/i.test(signUpError.message)
           ? 'That username was just taken. Please choose another.'
-          : signUpError.message,
+          : friendlyAuthError(signUpError),
       );
       return;
     }
