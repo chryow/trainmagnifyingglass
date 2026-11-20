@@ -2,7 +2,7 @@
   "name": "Hidden Gems",
   "short_name": "Hidden Gems",
   "description": "Find the places everyone else walks past, recommended by people who've been there.",
-  "start_url": "/#/discover",
+  "start_url": "/discover",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f8f6ff",

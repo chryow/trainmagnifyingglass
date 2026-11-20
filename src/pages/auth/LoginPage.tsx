@@ -35,7 +35,8 @@ export default function LoginPage() {
       );
       return;
     }
-    navigate('/discover');
+    // The app router sends signed-in users on from /login (to the page they
+    // were trying to open, if any), so nothing to do here.
   };
 
   return (

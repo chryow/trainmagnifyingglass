@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
-import { useRoute, useNavigate, matchPath } from '@/lib/router';
+import { useRoute, useNavigate, matchPath, rememberReturnTo, consumeReturnTo } from '@/lib/router';
 import { AppShell } from '@/components/AppShell';
 import { FullPageLoader } from '@/components/States';
 
@@ -63,10 +63,11 @@ function Router() {
     if (session && recovering && path !== '/update-password') {
       navigate('/update-password');
     } else if (!session && !PUBLIC_ROUTES.includes(path)) {
+      rememberReturnTo(path + window.location.search);
       navigate('/login');
     } else if (session && (path === '/' || path === '/login' || path === '/register')) {
       if (profile && !profile.onboarding_completed) navigate('/onboarding');
-      else navigate('/discover');
+      else navigate(consumeReturnTo() ?? '/discover');
     } else if (needsOnboarding) {
       navigate('/onboarding');
     }
