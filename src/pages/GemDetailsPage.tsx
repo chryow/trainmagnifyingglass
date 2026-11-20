@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { GemArt, CategoryIcon } from '@/components/GemCard';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
-import { uploadGemImage, validateImageFile, deleteGemImage } from '@/lib/upload';
+import { uploadGemImage, validateImageFile, deleteGemImage, deleteAllGemImages } from '@/lib/upload';
 import AccuracyPanel from '@/components/AccuracyPanel';
 import { GemsMap, LocationPicker, type Coords } from '@/components/Map';
 import ReportModal from '@/components/ReportModal';
@@ -56,6 +57,7 @@ export default function GemDetailsPage() {
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [showReport, setShowReport] = useState(false);
   const [showCollections, setShowCollections] = useState(false);
+  const dialogs = useDialogs();
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
   // `silent` refreshes data in place (after a like/comment/save) without
@@ -163,8 +165,19 @@ export default function GemDetailsPage() {
 
   const handleDelete = async () => {
     if (!gem || !isAuthor) return;
-    if (!confirm('Delete this gem? This cannot be undone.')) return;
-    await supabase.from('gems').delete().eq('id', gem.id);
+    const ok = await dialogs.confirm({
+      title: 'Delete this gem?',
+      message: 'Its photos, comments and reactions will be removed too. This can’t be undone.',
+      confirmLabel: 'Delete gem',
+      danger: true,
+    });
+    if (!ok) return;
+    // Remove photos first: storage rules only let the gem's author delete
+    // them, and that check needs the gem row to still exist.
+    await deleteAllGemImages(gem.id).catch(() => undefined);
+    const { error: delErr } = await supabase.from('gems').delete().eq('id', gem.id);
+    if (delErr) { dialogs.toast(delErr.message, 'error'); return; }
+    dialogs.toast('Gem deleted', 'success');
     navigate('/discover');
   };
 
@@ -273,7 +286,7 @@ export default function GemDetailsPage() {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Delete this comment?')) return;
+    if (!(await dialogs.confirm({ title: 'Delete this comment?', confirmLabel: 'Delete', danger: true }))) return;
     await supabase.from('comments').delete().eq('id', commentId);
     await load({ silent: true });
   };

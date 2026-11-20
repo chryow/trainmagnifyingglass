@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
@@ -34,6 +35,11 @@ export default function ProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockAction, setBlockAction] = useState(false);
   const [showReport, setShowReport] = useState(false);
+
+  // Opening a different profile starts on its About tab, not whichever tab
+  // was open on the previous profile
+  useEffect(() => { setTab('about'); }, [targetId]);
+  const dialogs = useDialogs();
 
   const load = useCallback(async () => {
     if (!targetId || !myProfile) return;
@@ -155,7 +161,7 @@ export default function ProfilePage() {
       const { error: rpcErr } = await supabase.rpc('unblock_user', { p_blocked_user_id: profile.id });
       if (!rpcErr) setIsBlocked(false);
     } else {
-      if (!confirm(`Block ${profile.display_name}? They won't be able to follow you or reply to your content.`)) {
+      if (!(await dialogs.confirm({ title: `Block ${profile.display_name}?`, message: "They won't be able to follow you or reply to your content. You can unblock them later in Settings.", confirmLabel: 'Block', danger: true }))) {
         setBlockAction(false);
         return;
       }

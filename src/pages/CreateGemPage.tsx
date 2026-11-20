@@ -216,7 +216,7 @@ export default function CreateGemPage() {
           ) : (
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-stone-300 p-6 text-stone-500 transition-colors hover:border-primary-400 hover:text-primary-500 dark:border-stone-700 dark:hover:border-primary-500">
               <ImagePlus className="h-6 w-6" />
-              <span className="text-sm">Click to upload (JPG, PNG, WebP — max 5MB)</span>
+              <span className="text-sm">Tap to add a cover photo (JPG, PNG or WebP)</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleCoverSelect} />
             </label>
           )}

@@ -41,7 +41,11 @@ export default function OnboardingPage() {
     const interests = Array.from(selected) as OnboardingInterest[];
     const inserts = interests.map((interest) => ({ user_id: user.id, interest }));
 
-    const { error: insertError } = await supabase.from('user_interests').insert(inserts);
+    // Upsert so retrying after a failed second step doesn't hit the
+    // (user_id, interest) unique constraint
+    const { error: insertError } = await supabase
+      .from('user_interests')
+      .upsert(inserts, { onConflict: 'user_id,interest', ignoreDuplicates: true });
     if (insertError) {
       setLoading(false);
       setError(insertError.message);

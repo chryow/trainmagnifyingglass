@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useDialogs } from '@/components/Dialogs';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
@@ -11,6 +12,7 @@ import ReportModal from '@/components/ReportModal';
 export default function CollectionDetailsPage() {
   const route = useRoute();
   const navigate = useNavigate();
+  const dialogs = useDialogs();
   const { profile } = useAuth();
   const match = matchPath('/collections/:id', route.path);
   const collectionId = match?.id ?? '';
@@ -87,8 +89,10 @@ export default function CollectionDetailsPage() {
 
   const handleDelete = async () => {
     if (!collection || !isOwner) return;
-    if (!confirm('Delete this collection? This cannot be undone.')) return;
-    await supabase.from('collections').delete().eq('id', collection.id);
+    if (!(await dialogs.confirm({ title: 'Delete this collection?', message: "The gems themselves aren't deleted, only this list. This can't be undone.", confirmLabel: 'Delete', danger: true }))) return;
+    const { error: delErr } = await supabase.from('collections').delete().eq('id', collection.id);
+    if (delErr) { dialogs.toast(delErr.message, 'error'); return; }
+    dialogs.toast('Collection deleted', 'success');
     navigate('/collections');
   };
 

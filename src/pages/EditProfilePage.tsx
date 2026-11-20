@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { LoadingSpinner } from '@/components/States';
-import { validateImageFile, uploadAvatar, deleteAvatarByUrl, MAX_AVATAR_SIZE } from '@/lib/upload';
+import { validateImageFile, uploadAvatar, deleteAvatarByUrl } from '@/lib/upload';
 import { ArrowLeft, Check, Camera, Trash2 } from 'lucide-react';
 
 export default function EditProfilePage() {
@@ -35,7 +35,7 @@ export default function EditProfilePage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !profile || uploading) return;
-    const invalid = validateImageFile(file) ?? (file.size > MAX_AVATAR_SIZE ? 'Profile photos must be 2 MB or smaller.' : null);
+    const invalid = validateImageFile(file);
     if (invalid) { setPhotoError(invalid); return; }
     setPhotoError(null);
     setUploading(true);
@@ -119,7 +119,7 @@ export default function EditProfilePage() {
         </div>
         <div className="text-center sm:text-left">
           <p className="font-semibold">Profile photo</p>
-          <p className="text-sm text-stone-500 dark:text-stone-400">JPG, PNG or WebP, up to 2 MB. Saves right away.</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">JPG, PNG or WebP. Saves right away.</p>
           <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
             <label className={`btn-primary cursor-pointer ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
               <Camera className="h-4 w-4" /> {avatarUrl ? 'Change photo' : 'Upload photo'}
