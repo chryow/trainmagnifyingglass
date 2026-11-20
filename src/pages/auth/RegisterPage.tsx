@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useNavigate } from '@/lib/router';
 import { Logo } from '@/components/Logo';
 import { LoadingSpinner } from '@/components/States';
-import { Eye, EyeOff, Check } from 'lucide-react';
+import { Eye, EyeOff, Check, MailCheck } from 'lucide-react';
 
 interface FormData {
   displayName: string;
@@ -31,21 +31,24 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const set = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
     if (key === 'username') setUsernameAvailable(null);
   };
 
-  const checkUsername = async () => {
+  const checkUsername = async (): Promise<boolean | null> => {
     if (!USERNAME_RE.test(form.username)) {
       setUsernameAvailable(false);
-      return;
+      return false;
     }
     setCheckingUsername(true);
-    const { data } = await supabase.from('profiles').select('id').eq('username', form.username).maybeSingle();
+    // Logged-out visitors can't read profiles, so ask the database via RPC
+    const { data, error: rpcErr } = await supabase.rpc('is_username_available', { p_username: form.username });
     setCheckingUsername(false);
-    setUsernameAvailable(!data);
+    setUsernameAvailable(rpcErr ? null : !!data);
+    return rpcErr ? null : !!data;
   };
 
   const passwordStrength = (() => {
@@ -73,10 +76,17 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    const available = await checkUsername();
+    if (available === false) {
+      setLoading(false);
+      setError('That username is already taken. Please choose another.');
+      return;
+    }
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/`,
         data: {
           username: form.username,
           display_name: form.displayName,
@@ -88,15 +98,48 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(
+        /database error saving new user/i.test(signUpError.message)
+          ? 'That username was just taken. Please choose another.'
+          : signUpError.message,
+      );
       return;
     }
     if (!data.user) {
       setError('Registration failed. Please try again.');
       return;
     }
+    // With email confirmation on, Supabase returns a user with no identities
+    // (instead of an error) when the email is already registered.
+    if (data.user.identities && data.user.identities.length === 0) {
+      setError('An account with this email already exists. Try signing in instead.');
+      return;
+    }
+    // No session means Supabase is waiting for the user to confirm their email
+    if (!data.session) {
+      setAwaitingConfirmation(true);
+      return;
+    }
     navigate('/onboarding');
   };
+
+  if (awaitingConfirmation) {
+    return (
+      <div className="auth-bg flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="card w-full max-w-md animate-slide-up space-y-4 p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-fuchsia-500 text-white shadow-glow">
+            <MailCheck className="h-8 w-8" />
+          </div>
+          <h1 className="font-display text-2xl font-bold">Check your email</h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            We sent a confirmation link to <strong className="text-stone-800 dark:text-stone-100">{form.email}</strong>.
+            Open it to activate your account, then you'll be signed in automatically.
+          </p>
+          <button onClick={() => navigate('/login')} className="btn-outline w-full">Back to sign in</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-primary-50/60 to-stone-50 dark:from-stone-900 dark:to-stone-950">
@@ -127,7 +170,7 @@ export default function RegisterPage() {
                     placeholder="explorer"
                     value={form.username}
                     onChange={set('username')}
-                    onBlur={checkUsername}
+                    onBlur={() => { if (form.username) void checkUsername(); }}
                     maxLength={20}
                   />
                 </div>

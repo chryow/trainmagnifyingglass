@@ -36,6 +36,10 @@ export default function DiscoverPage() {
           .limit(12),
         supabase.from('gems').select('*').eq('author_id', profile.id).eq('status', 'draft').order('updated_at', { ascending: false }).limit(4),
       ]);
+      // supabase-js returns errors instead of throwing; surface them so the
+      // page shows the retry state instead of silently looking empty.
+      const failed = [interestsRes, categoriesRes, communitiesRes, gemsRes, draftsRes].find((r) => r.error);
+      if (failed) throw failed.error;
       setInterests((interestsRes.data as UserInterest[] | null) ?? []);
       setCategories((categoriesRes.data as Category[] | null) ?? []);
       setCommunities((communitiesRes.data as Community[] | null) ?? []);

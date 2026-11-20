@@ -39,14 +39,17 @@ export default function SearchPage() {
         .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
         .eq('status', 'published');
 
-      if (query.trim()) {
-        q = q.or(`title.ilike.%${query.trim()}%,place_name.ilike.%${query.trim()}%,description.ilike.%${query.trim()}%,area.ilike.%${query.trim()}%`);
+      // Commas, brackets and quotes are syntax in PostgREST's or() filter;
+      // replace them so queries like "cafe, jakarta" don't error.
+      const term = query.trim().replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (term) {
+        q = q.or(`title.ilike.%${term}%,place_name.ilike.%${term}%,description.ilike.%${term}%,area.ilike.%${term}%`);
       }
       if (categoryFilter) {
         q = q.eq('category_id', categoryFilter);
       }
       if (areaFilter.trim()) {
-        q = q.ilike('area', `%${areaFilter.trim()}%`);
+        q = q.ilike('area', `%${areaFilter.trim().replace(/[%*]/g, '')}%`);
       }
 
       if (sort === 'recent') q = q.order('created_at', { ascending: false });

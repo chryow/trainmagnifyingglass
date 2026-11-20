@@ -55,9 +55,11 @@ export default function DeleteAccountPage() {
         return;
       }
 
-      // Sign out
+      // Sign out. The app redirects signed-out users to /login immediately,
+      // so show the confirmation there instead of on this page.
       await signOut();
       setState('success');
+      navigate('/login?deleted=1');
     } catch {
       setState('failure');
       setError('An unexpected error occurred. Please try again or contact support.');

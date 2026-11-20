@@ -8,6 +8,7 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
+import UpdatePasswordPage from '@/pages/auth/UpdatePasswordPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import DiscoverPage from '@/pages/DiscoverPage';
 import CommunitiesPage from '@/pages/CommunitiesPage';
@@ -49,17 +50,19 @@ const PUBLIC_ROUTES = ['/', '/login', '/register', '/reset-password',
 function Router() {
   const route = useRoute();
   const navigate = useNavigate();
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, recovering } = useAuth();
 
   const path = route.path;
 
   // Redirect to onboarding if not completed (but allow onboarding/settings/profile-edit)
-  const onboardingRoutes = ['/onboarding', '/login', '/register', '/reset-password', '/'];
+  const onboardingRoutes = ['/onboarding', '/login', '/register', '/reset-password', '/update-password', '/'];
   const needsOnboarding = !!session && !!profile && !profile.onboarding_completed && !onboardingRoutes.includes(path);
 
   useEffect(() => {
     if (loading) return;
-    if (!session && !PUBLIC_ROUTES.includes(path)) {
+    if (session && recovering && path !== '/update-password') {
+      navigate('/update-password');
+    } else if (!session && !PUBLIC_ROUTES.includes(path)) {
       navigate('/login');
     } else if (session && (path === '/' || path === '/login' || path === '/register')) {
       if (profile && !profile.onboarding_completed) navigate('/onboarding');
@@ -67,7 +70,7 @@ function Router() {
     } else if (needsOnboarding) {
       navigate('/onboarding');
     }
-  }, [loading, session, profile, path, needsOnboarding, navigate]);
+  }, [loading, session, profile, path, needsOnboarding, recovering, navigate]);
 
   // Public routes (no auth)
   if (path === '/') return <LandingPage />;
@@ -93,6 +96,10 @@ function Router() {
 
   // Not authenticated → redirect handled by effect; show loader meanwhile
   if (!session) return <FullPageLoader label="Redirecting to sign in…" />;
+
+  // Arrived from a password-reset email: set a new password first
+  if (path === '/update-password') return <UpdatePasswordPage />;
+  if (recovering) return <FullPageLoader />;
 
   // Onboarding gate
   if (profile && !profile.onboarding_completed) {

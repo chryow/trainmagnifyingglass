@@ -54,6 +54,7 @@ export default function ExplorePage() {
         supabase.from('categories').select('*').order('sort_order'),
         supabase.from('communities').select('id, name, visibility, is_active').eq('is_active', true).order('name'),
       ]);
+      if (catsRes.error || commsRes.error) throw catsRes.error ?? commsRes.error;
       setCategories((catsRes.data as Category[] | null) ?? []);
       const comms = (commsRes.data as Community[] | null) ?? [];
       setCommunities(comms);

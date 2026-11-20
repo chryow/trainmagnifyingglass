@@ -7,6 +7,12 @@ export interface Route {
 
 function parseHash(): Route {
   const hash = window.location.hash.replace(/^#/, '') || '/';
+  // Supabase email links (confirm sign-up, password reset, expired-link errors)
+  // return tokens in the hash, e.g. #access_token=...&type=recovery. They are
+  // not app routes: treat them as the root while supabase-js consumes them.
+  if (/(^|&)(access_token|refresh_token|error|error_code)=/.test(hash)) {
+    return { path: '/', params: {} };
+  }
   const [pathPart, queryPart] = hash.split('?');
   const params: Record<string, string> = {};
   if (queryPart) {

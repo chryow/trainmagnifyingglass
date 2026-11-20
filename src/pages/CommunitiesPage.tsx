@@ -5,7 +5,7 @@ import { useNavigate } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/States';
 import type { Community, CommunityType } from '@/types/database';
-import { Users, MapPin, Lock, Globe, Plus, Search } from 'lucide-react';
+import { Users, MapPin, Lock, Globe, Plus, Search, KeyRound } from 'lucide-react';
 
 export default function CommunitiesPage() {
   const { profile } = useAuth();
@@ -16,6 +16,25 @@ export default function CommunitiesPage() {
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'discover' | 'mine'>('discover');
+  const [inviteCode, setInviteCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  // Private communities are invisible to non-members, so invite codes are
+  // redeemed from here rather than from the community page.
+  const redeem = async () => {
+    if (!inviteCode.trim() || redeeming) return;
+    setRedeeming(true);
+    setInviteError(null);
+    const { data, error: rpcErr } = await supabase.rpc('redeem_invitation', { p_code: inviteCode.trim() });
+    setRedeeming(false);
+    const res = data as { success?: boolean; error?: string; community_id?: string } | null;
+    if (rpcErr || !res?.success || !res.community_id) {
+      setInviteError(res?.error ?? rpcErr?.message ?? 'Could not join with that code.');
+      return;
+    }
+    navigate(`/communities/${res.community_id}`);
+  };
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -26,6 +45,7 @@ export default function CommunitiesPage() {
         supabase.from('communities').select('*').eq('visibility', 'public').eq('is_active', true).order('created_at', { ascending: false }),
         supabase.from('community_members').select('community:communities(*)').eq('user_id', profile.id),
       ]);
+      if (publicRes.error || mineRes.error) throw publicRes.error ?? mineRes.error;
       setCommunities((publicRes.data as Community[] | null) ?? []);
       const mine = (mineRes.data as { community: Community }[] | null) ?? [];
       setMyCommunities(mine.map((m) => m.community).filter(Boolean));
@@ -49,6 +69,21 @@ export default function CommunitiesPage() {
         subtitle="Find groups exploring places and interests together."
         action={<button onClick={() => navigate('/communities/new')} className="btn-primary"><Plus className="h-4 w-4" /> New</button>}
       />
+
+      <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex items-center gap-3 sm:flex-1">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-fuchsia-500 text-white"><KeyRound className="h-5 w-5" /></span>
+          <div>
+            <p className="text-sm font-semibold">Have an invite code?</p>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Join a private community.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 sm:w-80">
+          <input className="input" placeholder="Invite code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void redeem(); }} />
+          <button onClick={redeem} disabled={redeeming || !inviteCode.trim()} className="btn-primary shrink-0">{redeeming ? '…' : 'Join'}</button>
+        </div>
+        {inviteError && <p role="alert" className="text-sm text-error-600 dark:text-error-400 sm:basis-full">{inviteError}</p>}
+      </div>
 
       <div className="flex gap-2">
         <TabBtn active={tab === 'discover'} onClick={() => setTab('discover')}>Discover</TabBtn>

@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from '@/lib/router';
+import { useNavigate, useRoute } from '@/lib/router';
 import { Logo, LogoWithText } from '@/components/Logo';
 import { LoadingSpinner } from '@/components/States';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const route = useRoute();
+  const justDeleted = route.params.deleted === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +23,15 @@ export default function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (signInError) {
-      setError(signInError.message === 'Invalid login credentials' ? 'Incorrect email or password.' : signInError.message);
+      setError(
+        signInError.message === 'Invalid login credentials'
+          ? 'Incorrect email or password.'
+          : /banned/i.test(signInError.message)
+            ? 'This account has been deleted or deactivated.'
+            : /email not confirmed/i.test(signInError.message)
+              ? 'Please confirm your email first. Check your inbox for the link.'
+              : signInError.message,
+      );
       return;
     }
     navigate('/discover');
@@ -39,6 +49,11 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {justDeleted && (
+            <div role="status" className="mb-4 rounded-2xl border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-900 dark:bg-success-950/40 dark:text-success-300">
+              Your account has been deleted. Thanks for being part of Hidden Gems.
+            </div>
+          )}
           <form onSubmit={onSubmit} className="card space-y-5 p-6" noValidate>
             <div>
               <label htmlFor="email" className="label">Email</label>

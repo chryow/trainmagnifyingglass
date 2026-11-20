@@ -53,9 +53,12 @@ export default function GemDetailsPage() {
   const [showReport, setShowReport] = useState(false);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // `silent` refreshes data in place (after a like/comment/save) without
+  // swapping the page for a spinner and losing the scroll position.
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!gemId || !profile) return;
-    setLoading(true);
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const { data, error: gErr } = await supabase
@@ -63,7 +66,7 @@ export default function GemDetailsPage() {
         .select('*, author:profiles(id, username, display_name, avatar_url, allow_comments), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
         .eq('id', gemId)
         .maybeSingle();
-      if (gErr || !data) { setError(true); return; }
+      if (gErr || !data) { if (!silent) setError(true); return; }
       const g = data as Gem;
       setGem(g);
 
@@ -83,9 +86,9 @@ export default function GemDetailsPage() {
       setIsSaved(!!savedRes.data);
       setComments(buildCommentTree((commentsRes.data as Comment[] | null) ?? []));
     } catch {
-      setError(true);
+      if (!silent) setError(true);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [gemId, profile]);
 
@@ -128,7 +131,7 @@ export default function GemDetailsPage() {
       return;
     }
     setEditing(false);
-    await load();
+    await load({ silent: true });
   };
 
   const handlePublish = async () => {
@@ -141,7 +144,7 @@ export default function GemDetailsPage() {
       else setFormError(pubErr.message);
       return;
     }
-    await load();
+    await load({ silent: true });
   };
 
   const handleDelete = async () => {
@@ -161,7 +164,7 @@ export default function GemDetailsPage() {
       const { url } = await uploadGemImage(gem.id, file);
       setCoverImage(url);
       await supabase.from('gems').update({ cover_image_url: url }).eq('id', gem.id);
-      await load();
+      await load({ silent: true });
     } catch {
       setImageError('Upload failed. Please try again.');
     }
@@ -177,7 +180,7 @@ export default function GemDetailsPage() {
       const { url } = await uploadGemImage(gem.id, file);
       const nextOrder = (images[images.length - 1]?.sort_order ?? 0) + 1;
       await supabase.from('gem_images').insert({ gem_id: gem.id, image_url: url, sort_order: nextOrder });
-      await load();
+      await load({ silent: true });
     } catch {
       setImageError('Upload failed. Please try again.');
     }
@@ -190,7 +193,7 @@ export default function GemDetailsPage() {
       try { await deleteGemImage(path); } catch { /* ignore storage errors */ }
     }
     await supabase.from('gem_images').delete().eq('id', img.id);
-    await load();
+    await load({ silent: true });
   };
 
   // --- Social handlers ---
@@ -198,11 +201,11 @@ export default function GemDetailsPage() {
   const handleToggleSave = async () => {
     if (!gem || !profile) return;
     if (isSaved) {
-      await supabase.from('saved_gems').delete().eq('gem_id', gem.id).eq('user_id', profile.id);
-      setIsSaved(false);
+      const { error: delErr } = await supabase.from('saved_gems').delete().eq('gem_id', gem.id).eq('user_id', profile.id);
+      if (!delErr) setIsSaved(false);
     } else {
-      await supabase.from('saved_gems').insert({ gem_id: gem.id, user_id: profile.id });
-      setIsSaved(true);
+      const { error: insErr } = await supabase.from('saved_gems').insert({ gem_id: gem.id, user_id: profile.id });
+      if (!insErr) setIsSaved(true);
     }
   };
 
@@ -214,7 +217,7 @@ export default function GemDetailsPage() {
     } else {
       await supabase.from('gem_reactions').insert({ gem_id: gem.id, user_id: profile.id, type });
     }
-    await load();
+    await load({ silent: true });
   };
 
   const handleSubmitComment = async () => {
@@ -231,7 +234,8 @@ export default function GemDetailsPage() {
       return;
     }
     setCommentBody('');
-    await load();
+    setFormError(null);
+    await load({ silent: true });
   };
 
   const handleSubmitReply = async (parentId: string) => {
@@ -251,13 +255,13 @@ export default function GemDetailsPage() {
     setReplyBody('');
     setReplyingTo(null);
     setExpandedReplies((prev) => new Set(prev).add(parentId));
-    await load();
+    await load({ silent: true });
   };
 
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm('Delete this comment?')) return;
     await supabase.from('comments').delete().eq('id', commentId);
-    await load();
+    await load({ silent: true });
   };
 
   const toggleReplies = (commentId: string) => {
@@ -475,6 +479,11 @@ export default function GemDetailsPage() {
       {/* Add image (author only) */}
       {isAuthor && (
         <div>
+          {route.params.cover === 'failed' && !gem.cover_image_url && (
+            <p role="status" className="mb-3 rounded-xl bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:bg-warning-900/30 dark:text-warning-300">
+              Your gem was saved, but the cover image didn't upload. Use Edit to add a cover image.
+            </p>
+          )}
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-stone-300 p-4 text-stone-500 hover:border-primary-400 dark:border-stone-700">
             <ImagePlus className="h-5 w-5" />
             <span className="text-sm">Add a photo</span>
