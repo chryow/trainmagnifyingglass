@@ -1,0 +1,40 @@
+name: Smoke test production
+
+# Runs after Vercel finishes a production deploy (and on demand) to make sure
+# the live site actually serves: app routes, static files, and share previews.
+
+on:
+  deployment_status:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://trainmagnifyingglass.vercel.app
+    steps:
+      - name: Check pages and assets
+        run: |
+          set -u
+          fail=0
+          check() { # url expected_status must_contain
+            body=$(curl -sS -L -o /tmp/body -w '%{http_code}' "$1"); 
+            if [ "$body" != "$2" ]; then echo "FAIL $1 -> HTTP $body (expected $2)"; fail=1; return; fi
+            if [ -n "${3:-}" ] && ! grep -q "$3" /tmp/body; then echo "FAIL $1 missing: $3"; fail=1; return; fi
+            echo "ok   $1 ($body)"
+          }
+          check "$SITE/" 200 '<div id="root">'
+          check "$SITE/discover" 200 '<div id="root">'
+          check "$SITE/gems/00000000-0000-0000-0000-000000000000" 200 '<div id="root">'
+          check "$SITE/favicon.svg" 200 '<svg'
+          check "$SITE/manifest.webmanifest" 200 '"Hidden Gems"'
+          check "$SITE/sw.js" 200 'serviceWorker\|self.addEventListener'
+          check "$SITE/og-default.png" 200
+          # The JS bundle referenced by index.html must load as JavaScript, not HTML
+          js=$(curl -sS "$SITE/" | grep -oE '/assets/[^"]+\.js' | head -1)
+          ctype=$(curl -sS -o /dev/null -w '%{content_type}' "$SITE$js")
+          echo "bundle $js -> $ctype"; case "$ctype" in *javascript*) ;; *) echo "FAIL bundle served as $ctype"; fail=1;; esac
+          # Share preview: unknown gem -> 404 generic card with Open Graph tags
+          check "$SITE/g/00000000-0000-0000-0000-000000000000" 404 'og:title'
+          exit $fail
