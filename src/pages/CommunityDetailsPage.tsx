@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute, matchPath } from '@/lib/router';
 import { Avatar, PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, LoadingSpinner } from '@/components/States';
+import { GemCard, GemArt } from '@/components/GemCard';
+import { PillTabs } from '@/components/PillTabs';
 import type { Community, CommunityMember, Profile, CommunityType, Gem } from '@/types/database';
 import { MapPin, Lock, Globe, Users, ArrowLeft, LogIn, LogOut, Shield, KeyRound, Plus, Sparkles, Settings as SettingsIcon, Archive } from 'lucide-react';
 
@@ -26,6 +28,7 @@ export default function CommunityDetailsPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [section, setSection] = useState<'gems' | 'members' | 'guidelines'>('gems');
   const dialogs = useDialogs();
   const [joinError, setJoinError] = useState<string | null>(null);
   const [gems, setGems] = useState<Gem[]>([]);
@@ -144,8 +147,8 @@ export default function CommunityDetailsPage() {
       <button onClick={() => navigate('/communities')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><ArrowLeft className="h-4 w-4" /> Communities</button>
 
       {(!community.is_active) && (
-        <div className="card flex items-center gap-3 border-amber-200 p-4 dark:border-amber-800">
-          <Archive className="h-5 w-5 shrink-0 text-amber-500" />
+        <div className="card flex items-center gap-3 border-citrine-300 p-4 dark:border-citrine-700">
+          <Archive className="h-5 w-5 shrink-0 text-citrine-500" />
           <div>
             <p className="text-sm font-medium">This community is archived</p>
             <p className="text-xs text-stone-500">Content is preserved but new activity is limited. {isOwner && 'You can restore it from the Edit page.'}</p>
@@ -153,170 +156,156 @@ export default function CommunityDetailsPage() {
         </div>
       )}
 
-      {/* Cover + header */}
-      <div className="card overflow-hidden">
-        <div className="h-40 bg-gradient-to-br from-primary-400 to-accent-500 sm:h-52">
-          {community.cover_image_url && <img src={community.cover_image_url} alt="" className="h-full w-full object-cover" />}
+      {/* Hero */}
+      <section className="overflow-hidden rounded-4xl bg-white shadow-card dark:bg-stone-900">
+        <div className="relative h-48 sm:h-64">
+          {community.cover_image_url
+            ? <img src={community.cover_image_url} alt="" className="h-full w-full object-cover" />
+            : <GemArt id={community.id} icon="users" className="h-full w-full" />}
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="badge bg-white/20 text-white backdrop-blur">{typeLabel(community.community_type)}</span>
+              <span className="badge bg-white/20 text-white backdrop-blur">
+                {community.visibility === 'private' ? <><Lock className="h-3 w-3" /> Private</> : <><Globe className="h-3 w-3" /> Public</>}
+              </span>
+              {!community.is_active && <span className="badge bg-white/90 text-stone-800">Archived</span>}
+            </div>
+            <h1 className="break-words font-display text-3xl font-extrabold leading-tight sm:text-4xl">{community.name}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-4 text-sm text-white/85">
+              <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {members.length} member{members.length !== 1 ? 's' : ''}</span>
+              {community.general_area && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {community.general_area}</span>}
+            </p>
+          </div>
         </div>
-        <div className="p-5 sm:p-6">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <TypeBadge type={community.community_type} />
-            <VisibilityBadge visibility={community.visibility} />
-            {community.general_area && <span className="flex items-center gap-1 text-xs text-stone-400"><MapPin className="h-3 w-3" />{community.general_area}</span>}
-            {!community.is_active && <span className="badge bg-stone-200 text-stone-600">Archived</span>}
-          </div>
-          <h1 className="font-display text-2xl font-semibold break-words">{community.name}</h1>
-          {community.description && <p className="mt-2 break-words text-stone-600 dark:text-stone-300">{community.description}</p>}
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1.5 text-sm text-stone-500"><Users className="h-4 w-4" /> {members.length} member{members.length !== 1 ? 's' : ''}</span>
-          </div>
+        <div className="space-y-4 p-5 sm:p-7">
+          {community.description && <p className="max-w-prose break-words text-stone-700 dark:text-stone-300">{community.description}</p>}
 
-          {/* Actions */}
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            {isMember && community.is_active && (
+              <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-primary"><Plus className="h-4 w-4" /> Add a gem</button>
+            )}
             {!isMember && !isPrivate && community.is_active && (
               <button onClick={handleJoin} disabled={joining} className="btn-primary">
                 {joining ? <LoadingSpinner size={16} /> : <><LogIn className="h-4 w-4" /> Join community</>}
               </button>
             )}
-            {!isMember && isPrivate && community.is_active && (
-              <div className="w-full space-y-2">
-                <div className="flex gap-2">
-                  <input className="input" placeholder="Invitation code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
-                  <button onClick={handleJoin} disabled={joining || !joinCode.trim()} className="btn-primary shrink-0">
-                    {joining ? <LoadingSpinner size={16} /> : 'Join'}
-                  </button>
-                </div>
-                <p className="text-xs text-stone-400">This is a private community. Enter an invitation code to join.</p>
-              </div>
-            )}
-            {isMember && !isOwner && (
-              <button onClick={handleLeave} disabled={leaving} className="btn-outline">
-                {leaving ? <LoadingSpinner size={16} /> : <><LogOut className="h-4 w-4" /> Leave community</>}
-              </button>
-            )}
             {isOwner && (
               <>
-                <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"><Shield className="h-3 w-3" /> Owner</span>
                 <button onClick={() => navigate(`/communities/${community.id}/edit`)} className="btn-outline"><SettingsIcon className="h-4 w-4" /> Edit</button>
-                <button onClick={() => setShowInvite((s) => !s)} className="btn-outline"><KeyRound className="h-4 w-4" /> Invite</button>
-                <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
+                <button onClick={() => setShowInvite((s) => !s)} className="btn-outline" aria-expanded={showInvite}><KeyRound className="h-4 w-4" /> Invite</button>
               </>
             )}
-            {myMembership?.role === 'moderator' && !isOwner && (
+            {(isOwner || myMembership?.role === 'moderator') && (
               <button onClick={() => navigate(`/moderation/${community.id}`)} className="btn-outline"><Shield className="h-4 w-4" /> Moderation</button>
             )}
-            {isMember && community.is_active && (
-              <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-secondary"><Plus className="h-4 w-4" /> Add a gem</button>
+            {isMember && !isOwner && (
+              <button onClick={handleLeave} disabled={leaving} className="btn-ghost text-stone-500">
+                {leaving ? <LoadingSpinner size={16} /> : <><LogOut className="h-4 w-4" /> Leave</>}
+              </button>
             )}
           </div>
 
-          {joinError && <div role="alert" className="mt-3 rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{joinError}</div>}
+          {!isMember && isPrivate && community.is_active && (
+            <div className="space-y-2 rounded-3xl bg-stone-50 p-4 dark:bg-stone-800/50">
+              <p className="text-sm font-semibold">This community is invite-only</p>
+              <div className="flex gap-2">
+                <input className="input bg-white dark:bg-stone-900" placeholder="Invite code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
+                <button onClick={handleJoin} disabled={joining || !joinCode.trim()} className="btn-primary shrink-0">
+                  {joining ? <LoadingSpinner size={16} /> : 'Join'}
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* Invite panel */}
+          {joinError && <div role="alert" className="rounded-2xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{joinError}</div>}
+
           {showInvite && isOwner && (
-            <div className="mt-4 rounded-xl bg-stone-50 p-4 dark:bg-stone-800/50">
-              <h3 className="text-sm font-semibold">Invitation codes</h3>
-              <p className="mt-1 text-xs text-stone-500">Share a single-use code with someone to let them join this private community.</p>
-              <button onClick={handleCreateInvite} className="btn-secondary mt-3"><Plus className="h-4 w-4" /> Generate code</button>
+            <div className="rounded-3xl bg-stone-50 p-4 dark:bg-stone-800/50">
+              <h3 className="font-semibold">Invite someone</h3>
+              <p className="mt-1 text-sm text-stone-500">Each code works once. Send it to the person you want to invite; they enter it on the Communities page.</p>
+              <button onClick={handleCreateInvite} className="btn-secondary mt-3 bg-white dark:bg-stone-900"><Plus className="h-4 w-4" /> New invite code</button>
               {inviteCode && (
                 <div className="mt-3 flex items-center gap-2">
-                  <code className="flex-1 rounded-lg bg-white px-3 py-2 font-mono text-sm dark:bg-stone-900">{inviteCode}</code>
-                  <button onClick={() => { void navigator.clipboard?.writeText(inviteCode); }} className="btn-ghost">Copy</button>
+                  <code className="flex-1 rounded-2xl bg-white px-4 py-2.5 font-mono text-sm dark:bg-stone-900">{inviteCode}</code>
+                  <button onClick={() => { void navigator.clipboard?.writeText(inviteCode); dialogs.toast('Invite code copied', 'success'); }} className="btn-outline">Copy</button>
                 </div>
               )}
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Guidelines */}
-      {community.guidelines && (
-        <div className="card p-5">
-          <h2 className="mb-2 font-display text-lg font-semibold">Community guidelines</h2>
-          <p className="whitespace-pre-line text-sm text-stone-600 dark:text-stone-300">{community.guidelines}</p>
-        </div>
-      )}
+      <PillTabs
+        label="Community sections"
+        active={section}
+        onChange={setSection}
+        tabs={[
+          { key: 'gems', label: 'Gems', count: gems.length },
+          { key: 'members', label: 'Members', count: members.length },
+          ...(community.guidelines ? [{ key: 'guidelines' as const, label: 'Guidelines' }] : []),
+        ]}
+      />
 
-      {/* Members */}
-      <div className="card p-5">
-        <h2 className="mb-4 font-display text-lg font-semibold">Members ({members.length})</h2>
-        {members.length === 0 ? (
-          <EmptyState icon={<Users className="h-6 w-6" />} title="No members yet" description="Be the first to join this community." />
+      {section === 'gems' && (
+        gems.length === 0 ? (
+          <EmptyState
+            icon={<Plus className="h-6 w-6" />}
+            title="No gems yet"
+            description={!community.is_active ? 'This community is archived, so new gems can’t be added.' : isMember ? 'Be the first to share a place with this community.' : 'Gems appear here once members start sharing.'}
+            action={isMember && community.is_active ? <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-primary">Add the first gem</button> : undefined}
+          />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-stone-50 dark:hover:bg-stone-800">
-                <button onClick={() => navigate(`/profile/${m.user_id}`)} className="flex flex-1 items-center gap-3 text-left">
-                  <Avatar url={m.profile?.avatar_url ?? null} name={m.profile?.display_name ?? 'User'} size={40} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{m.profile?.display_name}</p>
-                    <p className="truncate text-xs text-stone-400">@{m.profile?.username}</p>
-                  </div>
-                </button>
-                {m.role === 'moderator' && <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"><Shield className="h-3 w-3" /> Mod</span>}
-                {isOwner && m.user_id !== profile?.id && (
-                  <button
-                    onClick={() => handleToggleModerator(m)}
-                    disabled={actioningMember === m.id}
-                    className="btn-outline shrink-0 text-xs"
-                    title={m.role === 'moderator' ? 'Demote to member' : 'Promote to moderator'}
-                  >
-                    {actioningMember === m.id ? <LoadingSpinner size={14} /> : m.role === 'moderator' ? 'Demote' : 'Make mod'}
-                  </button>
-                )}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {gems.map((g) => (
+              <div key={g.id} className="relative">
+                <GemCard gem={g} onOpen={() => navigate(`/gems/${g.id}`)} />
+                {g.status === 'draft' && <span className="badge pointer-events-none absolute right-3 top-3 bg-citrine-400 text-stone-900">Draft</span>}
               </div>
             ))}
           </div>
-        )}
-      </div>
+        )
+      )}
 
-      {/* Gems in this community */}
-      <div className="card p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold">Hidden gems ({gems.length})</h2>
-          {isMember && community.is_active && (
-            <button onClick={() => navigate(`/gems/new?community=${community.id}`)} className="btn-secondary text-sm"><Plus className="h-4 w-4" /> Add a gem</button>
-          )}
-        </div>
-        {gems.length === 0 ? (
-          <EmptyState icon={<Plus className="h-6 w-6" />} title="No gems yet" description={!community.is_active ? "This community is archived. New gems cannot be added." : isMember ? "Share the first hidden gem in this community." : "Gems will appear here once members start sharing."} />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {gems.map((g) => (
-              <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
-                {g.cover_image_url ? (
-                  <img src={g.cover_image_url} alt={g.title} className="h-32 w-full object-cover" />
-                ) : (
-                  <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30">
-                    <Sparkles className="h-6 w-6 text-primary-400" />
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="mb-1 flex items-center gap-2">
-                    {g.category && <span className="badge bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{g.category.name}</span>}
-                    {g.status === 'draft' && <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>}
-                  </div>
-                  <h3 className="font-display text-base font-semibold">{g.title}</h3>
-                  <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}</p>
+      {section === 'members' && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {members.map((m) => (
+            <div key={m.id} className="card flex items-center gap-3 p-3">
+              <button onClick={() => navigate(`/profile/${m.user_id}`)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <Avatar url={m.profile?.avatar_url ?? null} name={m.profile?.display_name ?? 'User'} size={44} />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{m.profile?.display_name}</p>
+                  <p className="truncate text-sm text-stone-400">
+                    @{m.profile?.username}
+                    {m.user_id === community.owner_id ? ' · Owner' : m.role === 'moderator' ? ' · Moderator' : ''}
+                  </p>
                 </div>
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+              {isOwner && m.user_id !== profile?.id && (
+                <button
+                  onClick={() => handleToggleModerator(m)}
+                  disabled={actioningMember === m.id}
+                  className="btn-outline shrink-0 px-3 py-1.5 text-xs"
+                >
+                  {actioningMember === m.id ? <LoadingSpinner size={14} /> : m.role === 'moderator' ? 'Remove mod' : 'Make mod'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {section === 'guidelines' && community.guidelines && (
+        <div className="card p-5 sm:p-7">
+          <p className="max-w-prose whitespace-pre-line leading-relaxed text-stone-700 dark:text-stone-300">{community.guidelines}</p>
+        </div>
+      )}
     </div>
   );
 }
 
-function TypeBadge({ type }: { type: CommunityType }) {
-  const label = type === 'location_based' ? 'Location-Based' : type === 'interest_based' ? 'Interest-Based' : 'Private Group';
-  return <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300">{label}</span>;
+function typeLabel(type: CommunityType) {
+  return type === 'location_based' ? 'Location' : type === 'interest_based' ? 'Interest' : 'Private group';
 }
-function VisibilityBadge({ visibility }: { visibility: string }) {
-  return visibility === 'private' ? (
-    <span className="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"><Lock className="h-3 w-3" /> Private</span>
-  ) : (
-    <span className="badge bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300"><Globe className="h-3 w-3" /> Public</span>
-  );
-}
+

@@ -111,7 +111,7 @@ export default function ModeratorDashboardPage() {
       <PageHeader title="Moderation" subtitle={`Manage reports, suspensions, and moderation history for ${community.name}.`} />
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard icon={<Flag className="h-5 w-5" />} label="Pending reports" value={pendingReports.length} color="text-amber-500" />
+        <StatCard icon={<Flag className="h-5 w-5" />} label="Pending reports" value={pendingReports.length} color="text-citrine-500" />
         <StatCard icon={<Ban className="h-5 w-5" />} label="Active suspensions" value={activeSuspensions.length} color="text-error-500" />
         <StatCard icon={<FileText className="h-5 w-5" />} label="Total actions" value={actions.length} color="text-primary-500" />
       </div>
@@ -138,7 +138,7 @@ export default function ModeratorDashboardPage() {
                 <div key={r.id} className="card p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`badge ${r.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : r.status === 'escalated' ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>
+                      <span className={`badge ${r.status === 'pending' ? 'bg-citrine-100 text-citrine-700 dark:bg-citrine-500/30 dark:text-citrine-500' : r.status === 'escalated' ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>
                         {REPORT_STATUS_LABELS[r.status]}
                       </span>
                       <span className="text-xs text-stone-400">{REPORT_REASON_LABELS[r.reason]}</span>

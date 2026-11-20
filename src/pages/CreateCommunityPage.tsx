@@ -82,7 +82,7 @@ export default function CreateCommunityPage() {
             <button type="button" onClick={() => setVisibility('public')} aria-pressed={visibility === 'public'} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${visibility === 'public' ? 'border-accent-500 bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300' : 'border-stone-200 text-stone-600 dark:border-stone-700 dark:text-stone-300'}`}>
               <Globe className="h-4 w-4" /> Public
             </button>
-            <button type="button" onClick={() => setVisibility('private')} aria-pressed={visibility === 'private'} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${visibility === 'private' ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'border-stone-200 text-stone-600 dark:border-stone-700 dark:text-stone-300'}`}>
+            <button type="button" onClick={() => setVisibility('private')} aria-pressed={visibility === 'private'} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${visibility === 'private' ? 'border-citrine-500 bg-citrine-100 text-citrine-700 dark:bg-citrine-500/30 dark:text-citrine-500' : 'border-stone-200 text-stone-600 dark:border-stone-700 dark:text-stone-300'}`}>
               <Lock className="h-4 w-4" /> Private (invite code)
             </button>
           </div>

@@ -117,10 +117,10 @@ function VerificationBanner({ status }: { status: VerificationStatus }) {
   const config: Record<VerificationStatus, { icon: typeof ShieldCheck; className: string; iconColor: string }> = {
     new: { icon: HelpCircle, className: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300', iconColor: 'text-stone-500' },
     community_confirmed: { icon: ShieldCheck, className: 'bg-success-50 text-success-700 dark:bg-success-950/40 dark:text-success-400', iconColor: 'text-success-500' },
-    may_be_outdated: { icon: Clock, className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400', iconColor: 'text-amber-500' },
-    temporarily_unavailable: { icon: AlertTriangle, className: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400', iconColor: 'text-orange-500' },
+    may_be_outdated: { icon: Clock, className: 'bg-citrine-100 text-citrine-700 dark:bg-citrine-500/40 dark:text-citrine-500', iconColor: 'text-citrine-500' },
+    temporarily_unavailable: { icon: AlertTriangle, className: 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-400', iconColor: 'text-primary-500' },
     permanently_closed: { icon: XCircle, className: 'bg-error-50 text-error-700 dark:bg-error-950/40 dark:text-error-400', iconColor: 'text-error-500' },
-    under_review: { icon: AlertTriangle, className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400', iconColor: 'text-amber-500' },
+    under_review: { icon: AlertTriangle, className: 'bg-citrine-100 text-citrine-700 dark:bg-citrine-500/40 dark:text-citrine-500', iconColor: 'text-citrine-500' },
   };
 
   const { icon: Icon, className, iconColor } = config[status];
@@ -532,9 +532,9 @@ function CorrectionReview({
   };
 
   return (
-    <div className="card border-amber-300 p-4 dark:border-amber-700">
+    <div className="card border-citrine-300 p-4 dark:border-citrine-700">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-semibold text-amber-700 dark:text-amber-400">
+        <h3 className="font-display text-sm font-semibold text-citrine-700 dark:text-citrine-500">
           {corrections.length} correction suggestion{corrections.length !== 1 ? 's' : ''} to review
         </h3>
         <button onClick={() => setShowPanel(!showPanel)} className="text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400">

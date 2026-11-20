@@ -85,11 +85,14 @@ export default {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         'scale-in': 'scaleIn 0.2s ease-out',
+        // Small "it worked" bounce on save / react
+        pop: 'pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       keyframes: {
         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
         slideUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
         scaleIn: { '0%': { opacity: '0', transform: 'scale(0.96)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+        pop: { '0%': { transform: 'scale(1)' }, '45%': { transform: 'scale(1.3)' }, '100%': { transform: 'scale(1)' } },
       },
     },
   },

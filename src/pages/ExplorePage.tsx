@@ -193,7 +193,7 @@ export default function ExplorePage() {
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
         <input
           type="search"
-          className="input pl-11"
+          className="input h-14 rounded-3xl bg-white pl-11 text-base shadow-card dark:bg-stone-900"
           placeholder="Search by name, place, or description…"
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -201,8 +201,8 @@ export default function ExplorePage() {
       </div>
 
       {/* Filters */}
-      <div className="card space-y-4 p-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-stone-500">
+      <div className="card space-y-4 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-stone-500">
           <Filter className="h-4 w-4" /> Filters
           {hasActiveFilters && (
             <button onClick={resetFilters} className="ml-auto flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400">
@@ -260,13 +260,13 @@ export default function ExplorePage() {
           <div className="flex gap-1">
             <button
               onClick={() => setFilters((f) => ({ ...f, sort: 'recent' }))}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${filters.sort === 'recent' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${filters.sort === 'recent' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}
             >
               Recently added
             </button>
             <button
               onClick={() => setFilters((f) => ({ ...f, sort: 'confirmed' }))}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${filters.sort === 'confirmed' ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${filters.sort === 'confirmed' ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}
             >
               Recently updated
             </button>

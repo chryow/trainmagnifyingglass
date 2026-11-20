@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/States';
+import { CollectionCard, COLLECTION_PREVIEW_SELECT, type CollectionWithPreview } from '@/components/CollectionCard';
 import type { Collection, CollectionVisibility } from '@/types/database';
 import { Plus, Layers, Lock, Globe, Users, Search } from 'lucide-react';
 
@@ -23,7 +24,7 @@ export default function CollectionsPage() {
     try {
       const { data, error: err } = await supabase
         .from('collections')
-        .select('*, owner:profiles(id, username, display_name, avatar_url)')
+        .select(`${COLLECTION_PREVIEW_SELECT}, owner:profiles(id, username, display_name, avatar_url)`)
         .order('updated_at', { ascending: false });
       if (err) { setError(true); return; }
       setCollections((data as Collection[] | null) ?? []);
@@ -50,7 +51,7 @@ export default function CollectionsPage() {
         action={<button onClick={() => navigate('/collections/new')} className="btn-primary"><Plus className="h-4 w-4" /> New</button>}
       />
 
-      <div className="flex gap-2">
+      <div role="tablist" aria-label="Collections" className="flex gap-2">
         <TabBtn active={tab === 'mine'} onClick={() => setTab('mine')}>My collections ({mine.length})</TabBtn>
         <TabBtn active={tab === 'discover'} onClick={() => setTab('discover')}>Discover</TabBtn>
       </div>
@@ -72,23 +73,12 @@ export default function CollectionsPage() {
           action={tab === 'mine' ? <button onClick={() => navigate('/collections/new')} className="btn-primary">Create collection</button> : undefined}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((c) => (
-            <button key={c.id} onClick={() => navigate(`/collections/${c.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
-              <div className="h-28 bg-gradient-to-br from-primary-300 to-accent-400">
-                {c.cover_image_url && <img src={c.cover_image_url} alt="" className="h-full w-full object-cover" />}
-              </div>
-              <div className="p-4">
-                <div className="mb-1.5 flex items-center gap-2">
-                  <VisibilityBadge visibility={c.visibility} />
-                </div>
-                <h3 className="font-display text-base font-semibold">{c.name}</h3>
-                {c.description && <p className="mt-1 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">{c.description}</p>}
-                {tab === 'discover' && c.owner && (
-                  <p className="mt-2 text-xs text-stone-400">by {c.owner.display_name}</p>
-                )}
-              </div>
-            </button>
+            <div key={c.id}>
+              <CollectionCard collection={c as CollectionWithPreview} showVisibility={tab === 'mine'} onOpen={() => navigate(`/collections/${c.id}`)} />
+              {tab === 'discover' && c.owner && <p className="mt-2 px-2 text-xs text-stone-400">by {c.owner.display_name}</p>}
+            </div>
           ))}
         </div>
       )}
@@ -98,7 +88,7 @@ export default function CollectionsPage() {
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${active ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}>
+    <button role="tab" aria-selected={active} onClick={onClick} className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${active ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900' : 'bg-white text-stone-600 shadow-card hover:text-stone-900 dark:bg-stone-900 dark:text-stone-300'}`}>
       {children}
     </button>
   );

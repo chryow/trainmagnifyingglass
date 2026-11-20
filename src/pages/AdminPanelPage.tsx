@@ -9,6 +9,7 @@ import type { Report, ModerationAction, Profile } from '@/types/database';
 import { REPORT_REASON_LABELS, REPORT_STATUS_LABELS, MODERATION_ACTION_LABELS } from '@/types/database';
 import { Shield, Flag, Gavel, Users, Clock, CheckCircle, XCircle, UserX, UserCheck, ArrowUpCircle, EyeOff, Eye } from 'lucide-react';
 import ReportTargetInfo from '@/components/ReportTargetInfo';
+import { PillTabs } from '@/components/PillTabs';
 
 export default function AdminPanelPage() {
   const { profile } = useAuth();
@@ -130,23 +131,22 @@ export default function AdminPanelPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard icon={<ArrowUpCircle className="h-5 w-5" />} label="Escalated" value={escalatedReports.length} color="text-error-500" />
-        <StatCard icon={<Flag className="h-5 w-5" />} label="Total reports" value={reports.length} color="text-amber-500" />
+        <StatCard icon={<Flag className="h-5 w-5" />} label="Total reports" value={reports.length} color="text-citrine-500" />
         <StatCard icon={<UserX className="h-5 w-5" />} label="Deactivated" value={inactiveUsers.length} color="text-stone-500" />
         <StatCard icon={<Gavel className="h-5 w-5" />} label="Mod actions" value={actions.length} color="text-primary-500" />
       </div>
 
-      <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-        {([
-          { key: 'escalated' as const, label: `Escalated (${escalatedReports.length})`, icon: ArrowUpCircle },
-          { key: 'reports' as const, label: `All reports (${reports.length})`, icon: Flag },
-          { key: 'users' as const, label: `Users (${users.length})`, icon: Users },
-          { key: 'history' as const, label: 'History', icon: Clock },
-        ]).map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${tab === t.key ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300'}`}>
-            <t.icon className="h-4 w-4" /> {t.label}
-          </button>
-        ))}
-      </div>
+      <PillTabs
+        label="Admin sections"
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'escalated', label: 'Escalated', count: escalatedReports.length },
+          { key: 'reports', label: 'All reports', count: reports.length },
+          { key: 'users', label: 'Users', count: users.length },
+          { key: 'history', label: 'History' },
+        ]}
+      />
 
       {tab === 'escalated' && (
         <div>
@@ -196,7 +196,7 @@ export default function AdminPanelPage() {
                 <div key={r.id} className="card p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`badge ${r.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:bg-amber-900/30 dark:text-amber-400' : r.status === 'escalated' ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>
+                      <span className={`badge ${r.status === 'pending' ? 'bg-citrine-100 text-citrine-700 dark:bg-citrine-500/30 dark:bg-citrine-500/30 dark:text-citrine-500' : r.status === 'escalated' ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-400' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'}`}>
                         {REPORT_STATUS_LABELS[r.status]}
                       </span>
                       <span className="text-xs text-stone-400">{REPORT_REASON_LABELS[r.reason]}</span>
@@ -301,10 +301,12 @@ export default function AdminPanelPage() {
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
   return (
-    <div className="card p-4 text-center">
-      <div className={`mx-auto mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800 ${color}`}>{icon}</div>
-      <p className="font-display text-xl font-bold">{value}</p>
-      <p className="text-xs text-stone-400">{label}</p>
+    <div className="card flex items-center gap-3 p-4">
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800 ${color}`}>{icon}</div>
+      <div>
+        <p className="font-display text-2xl font-extrabold leading-none">{value}</p>
+        <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">{label}</p>
+      </div>
     </div>
   );
 }

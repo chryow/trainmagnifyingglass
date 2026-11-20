@@ -62,15 +62,16 @@ export default function NotificationsPage() {
   const handleMarkAllRead = async () => {
     if (!profile || unreadCount === 0) return;
     setMarkingAll(true);
-    await supabase.from('notifications').update({ read: true }).eq('recipient_id', profile.id).eq('read', false);
+    const { error: updErr } = await supabase.from('notifications').update({ read: true }).eq('recipient_id', profile.id).eq('read', false);
     setMarkingAll(false);
-    await load();
+    // Update in place instead of reloading (avoids the full-page spinner)
+    if (!updErr) setNotifications((prev) => prev.map((x) => ({ ...x, read: true })));
   };
 
   const handleMarkRead = async (n: AppNotification) => {
     if (n.read) { handleNavigate(n); return; }
     await supabase.from('notifications').update({ read: true }).eq('id', n.id);
-    await load();
+    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
     handleNavigate(n);
   };
 
@@ -135,57 +136,80 @@ export default function NotificationsPage() {
         subtitle={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : "You're all caught up"}
         action={
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/settings')} className="btn-ghost text-sm">Preferences</button>
+            <button onClick={() => navigate('/settings')} className="btn-ghost hidden text-sm sm:inline-flex">Preferences</button>
             {unreadCount > 0 && <button onClick={handleMarkAllRead} disabled={markingAll} className="btn-outline text-sm">{markingAll ? <LoadingSpinner size={16} /> : <><Check className="h-4 w-4" /> Mark all read</>}</button>}
           </div>
         }
       />
 
-      <p className="text-sm text-stone-500 dark:text-stone-400">
-        Your activity inbox — comments, reactions, follows, collection adds, and correction updates all appear here.
-      </p>
-
       {unavailableId && (
-        <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <div className="flex items-center gap-2 rounded-2xl bg-citrine-100 px-4 py-3 text-sm text-citrine-700 dark:bg-citrine-500/15 dark:text-citrine-300">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          This item is no longer available.
+          That item has been deleted or is no longer visible to you.
         </div>
       )}
 
       {notifications.length === 0 ? (
-        <EmptyState icon={<Bell className="h-6 w-6" />} title="No notifications yet" description="You'll be notified here when someone comments on your gems, reacts, follows you, or adds your gem to a collection. You can adjust which notifications you receive in your preferences." action={<button onClick={() => navigate('/settings')} className="btn-outline">Notification preferences</button>} />
+        <EmptyState
+          icon={<Bell className="h-6 w-6" />}
+          title="You're all caught up"
+          description="Comments, reactions, new followers and collection adds will show up here."
+          action={<button onClick={() => navigate('/settings')} className="btn-outline">Choose what you're notified about</button>}
+        />
       ) : (
-        <div className="space-y-2">
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-stone-50 dark:hover:bg-stone-800 ${n.read ? 'border-stone-200 dark:border-stone-800' : 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/20'}`}
-            >
-              <button onClick={() => handleMarkRead(n)} className="flex flex-1 items-center gap-3 text-left">
-                <NotificationIcon type={n.type} />
-                {n.actor && <Avatar url={n.actor.avatar_url ?? null} name={n.actor.display_name} size={36} />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm">
-                    <span className="font-medium">{n.actor?.display_name ?? 'Someone'}</span>{' '}
-                    <span className="text-stone-500 dark:text-stone-400">{notificationText(n.type)}</span>
-                  </p>
-                  <p className="mt-0.5 text-xs text-stone-400">{timeAgo(n.created_at)}</p>
-                </div>
-                {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary-500" />}
-              </button>
-              <button
-                onClick={() => handleDismiss(n)}
-                className="shrink-0 rounded-lg p-1.5 text-stone-300 opacity-0 transition-opacity hover:bg-stone-100 hover:text-stone-500 group-hover:opacity-100 dark:hover:bg-stone-700"
-                title="Dismiss"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="space-y-6">
+          {groupByDay(notifications).map(([label, group]) => (
+            <section key={label}>
+              <h2 className="mb-2 px-1 text-sm font-semibold text-stone-500 dark:text-stone-400">{label}</h2>
+              <div className="overflow-hidden rounded-3xl bg-white shadow-card dark:bg-stone-900">
+                {group.map((n, idx) => (
+                  <div key={n.id} className={`group flex items-center gap-3 px-4 py-3.5 ${idx > 0 ? 'border-t border-stone-100 dark:border-stone-800' : ''} ${n.read ? '' : 'bg-primary-50/60 dark:bg-primary-500/10'}`}>
+                    <button onClick={() => handleMarkRead(n)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                      <span className="relative shrink-0">
+                        <Avatar url={n.actor?.avatar_url ?? null} name={n.actor?.display_name ?? '?'} size={44} />
+                        <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-card dark:bg-stone-900">
+                          <NotificationIcon type={n.type} />
+                        </span>
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm leading-snug">
+                          <span className="font-semibold">{n.actor?.display_name ?? 'Someone'}</span>{' '}
+                          <span className="text-stone-600 dark:text-stone-300">{notificationText(n.type)}</span>
+                        </span>
+                        <span className="mt-0.5 block text-xs text-stone-400">{timeAgo(n.created_at)}</span>
+                      </span>
+                      {!n.read && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary-500" aria-label="Unread" />}
+                    </button>
+                    <button
+                      onClick={() => handleDismiss(n)}
+                      className="shrink-0 rounded-xl p-1.5 text-stone-300 transition-opacity hover:bg-stone-100 hover:text-stone-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 dark:hover:bg-stone-800"
+                      title="Dismiss"
+                      aria-label="Dismiss notification"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function groupByDay(items: AppNotification[]): [string, AppNotification[]][] {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const today = startOfToday.getTime();
+  const weekAgo = today - 6 * 86400000;
+  const groups: Record<string, AppNotification[]> = { Today: [], 'This week': [], Earlier: [] };
+  for (const n of items) {
+    const t = new Date(n.created_at).getTime();
+    groups[t >= today ? 'Today' : t >= weekAgo ? 'This week' : 'Earlier'].push(n);
+  }
+  return Object.entries(groups).filter(([, g]) => g.length > 0);
 }
 
 function notificationText(type: NotificationType): string {
@@ -204,7 +228,7 @@ function notificationText(type: NotificationType): string {
 }
 
 function NotificationIcon({ type }: { type: NotificationType }) {
-  const iconClass = "h-5 w-5";
+  const iconClass = "h-3.5 w-3.5";
   switch (type) {
     case 'comment':
     case 'reply':
