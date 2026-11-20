@@ -1,0 +1,31 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after about a week without activity. This makes
+# a tiny read request every 3 days so the database stays active.
+# The URL and publishable key are the same public values shipped in the
+# website itself; they are not secrets.
+#
+# Note: GitHub turns off scheduled workflows in repositories with no commits
+# for 60 days. If that happens, re-enable it from the Actions tab.
+
+on:
+  schedule:
+    - cron: '17 3 */3 * *' # 03:17 UTC every 3 days
+  workflow_dispatch: # allows a manual run from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the database
+        env:
+          SUPABASE_URL: https://rmbxavtweotyzfvdyaqm.supabase.co
+          SUPABASE_KEY: sb_publishable_A4EarcCdTXKKnXz0I3U4mw_ZHLvWZmW
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/categories?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY")
+          echo "Supabase responded with HTTP $status"
+          # Any HTTP response means the project received the request.
+          # 000 means it could not be reached at all (e.g. already paused).
+          if [ "$status" = "000" ] || [ "$status" -ge 500 ]; then exit 1; fi

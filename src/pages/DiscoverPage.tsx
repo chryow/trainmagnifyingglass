@@ -15,6 +15,8 @@ export default function DiscoverPage() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [gems, setGems] = useState<Gem[]>([]);
   const [myDrafts, setMyDrafts] = useState<Gem[]>([]);
+  const [picked, setPicked] = useState<Gem[]>([]);
+  const [pickedFor, setPickedFor] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
@@ -45,6 +47,30 @@ export default function DiscoverPage() {
       setCommunities((communitiesRes.data as Community[] | null) ?? []);
       setGems((gemsRes.data as Gem[] | null) ?? []);
       setMyDrafts((draftsRes.data as Gem[] | null) ?? []);
+
+      // "Picked for you": recent gems in the categories matching the
+      // interests chosen during onboarding, excluding the user's own.
+      const myInterests = ((interestsRes.data as UserInterest[] | null) ?? []).map((i) => i.interest);
+      const cats = (categoriesRes.data as Category[] | null) ?? [];
+      const wantedSlugs = new Set(myInterests.map((i) => INTEREST_TO_CATEGORY[i]).filter(Boolean));
+      const matched = cats.filter((c) => wantedSlugs.has(c.slug));
+      if (matched.length > 0) {
+        const recentIds = new Set(((gemsRes.data as Gem[] | null) ?? []).map((g) => g.id));
+        const { data: recs } = await supabase
+          .from('gems')
+          .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
+          .eq('status', 'published')
+          .in('category_id', matched.map((c) => c.id))
+          .neq('author_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(12);
+        // Skip gems already shown in "Fresh finds"
+        setPicked(((recs as Gem[] | null) ?? []).filter((g) => !recentIds.has(g.id)).slice(0, 6));
+        setPickedFor(matched.map((c) => c.name));
+      } else {
+        setPicked([]);
+        setPickedFor([]);
+      }
     } catch {
       setError(true);
     } finally {
@@ -158,6 +184,23 @@ export default function DiscoverPage() {
         </section>
       )}
 
+      {/* Picked for you */}
+      {picked.length > 0 && (
+        <section>
+          <SectionHeading title="Picked for you" />
+          <p className="-mt-3 mb-4 text-sm text-stone-500 dark:text-stone-400">
+            Because you like {formatList(pickedFor.slice(0, 3))}{pickedFor.length > 3 ? ' and more' : ''}.
+          </p>
+          <div className="scrollbar-hide -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
+            {picked.map((g) => (
+              <div key={g.id} className="w-64 shrink-0 snap-start sm:w-auto">
+                <GemCard gem={g} onOpen={() => navigate(`/gems/${g.id}`)} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Categories */}
       {categories.length > 0 && (
         <section>
@@ -243,6 +286,29 @@ function SectionHeading({ title, action, onAction }: { title: string; action?: s
       )}
     </div>
   );
+}
+
+// Onboarding interests → category slugs (interests without a matching
+// category, like "Accessibility", don't drive recommendations yet)
+const INTEREST_TO_CATEGORY: Record<string, string> = {
+  'Food and Drinks': 'food-and-drinks',
+  'Cafés': 'cafes',
+  'Study Spots': 'study-spots',
+  'Nature': 'nature',
+  'Scenic Views': 'scenic-views',
+  'Photography': 'photography',
+  'Shopping': 'shopping',
+  'Arts and Culture': 'arts-and-culture',
+  'Books': 'books-and-reading',
+  'Sports and Recreation': 'sports-and-recreation',
+  'Family-Friendly Places': 'family-activities',
+  'Remote Work': 'remote-work',
+  'Night Activities': 'night-activities',
+};
+
+function formatList(items: string[]) {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 function typeLabel(t: string) {
