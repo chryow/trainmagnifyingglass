@@ -64,7 +64,7 @@
   }
   /* Filled inputs: tinted at rest, white with a ruby ring when focused */
   .input {
-    @apply w-full rounded-2xl border-2 border-transparent bg-stone-100 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/15 dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder-stone-500 dark:focus:bg-stone-900;
+    @apply w-full rounded-2xl border-2 border-transparent bg-stone-100 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-400/15 dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder-stone-500 dark:focus:bg-stone-900;
   }
   .label {
     @apply mb-1.5 block text-sm font-semibold text-stone-700 dark:text-stone-300;
@@ -82,8 +82,8 @@
   .auth-bg {
     @apply bg-stone-50 dark:bg-stone-950;
     background-image:
-      radial-gradient(40rem 28rem at 10% -10%, rgb(240 51 111 / 0.18), transparent 60%),
-      radial-gradient(36rem 26rem at 100% 110%, rgb(51 70 240 / 0.18), transparent 60%);
+      radial-gradient(40rem 28rem at 10% -10%, rgb(201 102 133 / 0.10), transparent 60%),
+      radial-gradient(36rem 26rem at 100% 110%, rgb(94 110 194 / 0.10), transparent 60%);
   }
   .text-gem {
     @apply bg-gem bg-clip-text text-transparent;

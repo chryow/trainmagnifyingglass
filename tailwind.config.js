@@ -9,39 +9,39 @@ export default {
       colors: {
         // Ruby — primary brand colour (jewel-tone palette for "Hidden Gems")
         primary: {
-          50: '#fff0f5',
-          100: '#ffe1eb',
-          200: '#ffc2d6',
-          300: '#ff94b5',
-          400: '#fb5a8c',
-          500: '#f0336f',
-          600: '#e11d5c',
-          700: '#bc1049',
-          800: '#9b1140',
-          900: '#80123a',
-          950: '#48041c',
+          50: '#fcf3f6',
+          100: '#f9e6ec',
+          200: '#f2cbd7',
+          300: '#e7a8bb',
+          400: '#d9849e',
+          500: '#c96685',
+          600: '#b4506f',
+          700: '#96425c',
+          800: '#7c3a4f',
+          900: '#673445',
+          950: '#3a1a24',
         },
         // Sapphire — secondary
         accent: {
-          50: '#eef1ff',
-          100: '#e0e5ff',
-          200: '#c6ceff',
-          300: '#a1abff',
-          400: '#7a7ffc',
-          500: '#5a5cf6',
-          600: '#3346f0',
-          700: '#2a35d4',
-          800: '#252eaa',
-          900: '#252d86',
-          950: '#161a4e',
+          50: '#f3f4fc',
+          100: '#e7e9f8',
+          200: '#d0d5f1',
+          300: '#b0b8e6',
+          400: '#8d96d8',
+          500: '#727bc9',
+          600: '#5e64b8',
+          700: '#4f539c',
+          800: '#43477e',
+          900: '#3b3e66',
+          950: '#23253c',
         },
         // Citrine — small highlights only
         citrine: {
-          100: '#fff4cc',
-          300: '#ffd866',
-          400: '#ffc531',
-          500: '#f5ae0b',
-          700: '#a86b00',
+          100: '#fbf3dd',
+          300: '#f0d898',
+          400: '#e6c675',
+          500: '#d4ae52',
+          700: '#8a6a1f',
         },
         // Neutrals: cool plum-tinted greys replace Tailwind's warm stone
         stone: {
@@ -75,11 +75,11 @@ export default {
       boxShadow: {
         card: '0 1px 2px 0 rgb(28 20 51 / 0.05), 0 4px 16px -6px rgb(28 20 51 / 0.10)',
         'card-hover': '0 2px 4px 0 rgb(28 20 51 / 0.06), 0 18px 40px -12px rgb(28 20 51 / 0.22)',
-        glow: '0 12px 32px -10px rgb(225 29 92 / 0.55), 0 6px 18px -8px rgb(51 70 240 / 0.45)',
+        glow: '0 8px 22px -12px rgb(150 66 92 / 0.45), 0 4px 12px -8px rgb(94 100 184 / 0.30)',
       },
       backgroundImage: {
-        // The signature "faceted gem" gradient: ruby → amethyst → sapphire
-        gem: 'linear-gradient(135deg, #f0336f 0%, #b23be6 52%, #3346f0 100%)',
+        // The signature "faceted gem" gradient: soft rose → amethyst → periwinkle
+        gem: 'linear-gradient(135deg, #c96685 0%, #8f74c2 52%, #5e6ec2 100%)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

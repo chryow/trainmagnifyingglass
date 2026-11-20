@@ -19,12 +19,12 @@ export function CategoryIcon({ icon, className = 'h-4 w-4' }: { icon: string | n
 // Jewel-tone pairs for gems without a photo. Picked from the gem id so the
 // same gem always gets the same stone.
 const STONES = [
-  ['#f0336f', '#8b2be2'], // ruby → amethyst
-  ['#3346f0', '#16b6c9'], // sapphire → aquamarine
-  ['#b23be6', '#3346f0'], // amethyst → sapphire
-  ['#ff7a45', '#f0336f'], // fire opal → ruby
-  ['#10b981', '#3346f0'], // emerald → sapphire
-  ['#ffc531', '#ff5a5f'], // citrine → garnet
+  ['#d07a93', '#9a7fc4'], // rose quartz → amethyst
+  ['#6f7fc8', '#6fb3bf'], // sapphire → aquamarine
+  ['#a283c9', '#6f7fc8'], // amethyst → sapphire
+  ['#e0987a', '#d07a93'], // sunstone → rose quartz
+  ['#6fae96', '#6f7fc8'], // jade → sapphire
+  ['#dcb867', '#d08a7e'], // citrine → garnet
 ];
 
 function hash(id: string) {
@@ -44,7 +44,7 @@ export function GemArt({ id, icon, className = '' }: { id: string; icon?: string
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice" aria-hidden>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop stopColor="white" stopOpacity="0.35" />
+            <stop stopColor="white" stopOpacity="0.28" />
             <stop offset="1" stopColor="white" stopOpacity="0" />
           </linearGradient>
         </defs>

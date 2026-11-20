@@ -72,7 +72,7 @@ export default function CommunitiesPage() {
 
       <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="flex items-center gap-3 sm:flex-1">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-fuchsia-500 text-white"><KeyRound className="h-5 w-5" /></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gem text-white"><KeyRound className="h-5 w-5" /></span>
           <div>
             <p className="text-sm font-semibold">Have an invite code?</p>
             <p className="text-xs text-stone-500 dark:text-stone-400">Join a private community.</p>
