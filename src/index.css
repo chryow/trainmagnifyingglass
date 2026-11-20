@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -22,6 +22,10 @@
     font-feature-settings: 'cv11', 'ss01';
   }
 
+  h1, h2, h3, .font-display {
+    letter-spacing: -0.02em;
+  }
+
   *:focus-visible {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-stone-50 dark:ring-offset-stone-950;
   }
@@ -40,37 +44,49 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60;
   }
+  /* The signature gem gradient lives on primary actions */
   .btn-primary {
-    @apply btn bg-primary-600 text-white shadow-sm hover:bg-primary-700 active:scale-[0.98];
+    @apply btn bg-gem text-white shadow-glow hover:brightness-110 active:scale-[0.98];
   }
   .btn-secondary {
-    @apply btn bg-stone-200 text-stone-800 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700;
+    @apply btn bg-stone-100 text-stone-800 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700;
   }
   .btn-ghost {
     @apply btn text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800;
   }
   .btn-outline {
-    @apply btn border border-stone-300 bg-transparent text-stone-800 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-100 dark:hover:bg-stone-800;
+    @apply btn border-2 border-stone-200 bg-white text-stone-800 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:bg-transparent dark:text-stone-100 dark:hover:bg-stone-800;
   }
   .btn-danger {
     @apply btn bg-error-600 text-white hover:bg-error-700;
   }
+  /* Filled inputs: tinted at rest, white with a ruby ring when focused */
   .input {
-    @apply w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder-stone-500;
+    @apply w-full rounded-2xl border-2 border-transparent bg-stone-100 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/15 dark:bg-stone-800/70 dark:text-stone-100 dark:placeholder-stone-500 dark:focus:bg-stone-900;
   }
   .label {
-    @apply mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300;
+    @apply mb-1.5 block text-sm font-semibold text-stone-700 dark:text-stone-300;
   }
   .card {
-    @apply rounded-2xl border border-stone-200 bg-white shadow-card dark:border-stone-800 dark:bg-stone-900;
+    @apply rounded-3xl border border-stone-200/70 bg-white shadow-card dark:border-stone-800 dark:bg-stone-900;
   }
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
   .section-title {
-    @apply font-display text-xl font-semibold text-stone-900 dark:text-stone-50;
+    @apply font-display text-xl font-bold text-stone-900 dark:text-stone-50;
+  }
+  /* Auth screens: soft jewel-tone light behind the form */
+  .auth-bg {
+    @apply bg-stone-50 dark:bg-stone-950;
+    background-image:
+      radial-gradient(40rem 28rem at 10% -10%, rgb(240 51 111 / 0.18), transparent 60%),
+      radial-gradient(36rem 26rem at 100% 110%, rgb(51 70 240 / 0.18), transparent 60%);
+  }
+  .text-gem {
+    @apply bg-gem bg-clip-text text-transparent;
   }
 }
 

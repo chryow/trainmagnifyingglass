@@ -38,13 +38,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-primary-50/60 to-stone-50 dark:from-stone-900 dark:to-stone-950">
+    <div className="auth-bg flex min-h-screen flex-col">
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-md animate-slide-up">
           <div className="mb-8 flex flex-col items-center gap-3 text-center">
             <Logo className="h-14 w-14" />
             <div>
-              <h1 className="font-display text-2xl font-semibold">Welcome back</h1>
+              <h1 className="font-display text-3xl font-bold">Welcome back</h1>
               <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Sign in to continue exploring hidden gems</p>
             </div>
           </div>

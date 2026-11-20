@@ -1,19 +1,22 @@
 import { MapPin, Sparkles } from 'lucide-react';
 
+// A faceted gem: the crown and pavilion facets are shaded separately so the
+// mark reads as cut stone at small sizes.
 export function Logo({ className = 'h-8 w-8' }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} role="img" aria-label="Hidden Gems logo" fill="none">
-      <path
-        d="M24 4C15.16 4 8 11.16 8 20c0 10.5 12.5 20.5 15.05 22.62a1.5 1.5 0 0 0 1.9 0C27.5 40.5 40 30.5 40 20c0-8.84-7.16-16-16-16z"
-        fill="currentColor"
-        className="text-primary-500"
-      />
-      <circle cx="24" cy="19" r="7" fill="white" fillOpacity="0.95" />
-      <path
-        d="M24 13.5l1.6 3.2 3.5.5-2.55 2.48.6 3.52L24 21.5l-3.15 1.7.6-3.52-2.55-2.48 3.5-.5L24 13.5z"
-        fill="currentColor"
-        className="text-accent-500"
-      />
+      <defs>
+        <linearGradient id="hg-gem" x1="6" y1="6" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#f0336f" />
+          <stop offset="0.52" stopColor="#b23be6" />
+          <stop offset="1" stopColor="#3346f0" />
+        </linearGradient>
+      </defs>
+      <path d="M14 7h20l10 11-20 25L4 18 14 7z" fill="url(#hg-gem)" />
+      <path d="M4 18h40L24 43 4 18z" fill="#1c1433" fillOpacity="0.18" />
+      <path d="M14 7l4 11h12l4-11" stroke="white" strokeOpacity="0.55" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M4 18h40M18 18l6 25 6-25" stroke="white" strokeOpacity="0.55" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="35.5" cy="11.5" r="2.5" fill="#ffc531" />
     </svg>
   );
 }
@@ -26,7 +29,7 @@ export function LogoWithText({ className = '' }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <Logo className="h-8 w-8" />
-      <span className="font-display text-lg font-semibold tracking-tight">
+      <span className="font-display text-lg font-bold tracking-tight">
         Hidden Gems
       </span>
     </div>
