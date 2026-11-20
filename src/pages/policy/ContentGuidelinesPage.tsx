@@ -2,7 +2,7 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function ContentGuidelinesPage() {
   return (
-    <PolicyPage title="Content Guidelines" subtitle="What kind of content belongs here and what doesn't.">
+    <PolicyPage title="Content guidelines" subtitle="What kind of content belongs here and what doesn't.">
       <h2>What to share</h2>
       <p>Share genuine, specific places that others would enjoy visiting — cafés, viewpoints, parks, shops, study spots, and similar hidden gems. Include helpful details like the area, what makes it special, and practical tips.</p>
 

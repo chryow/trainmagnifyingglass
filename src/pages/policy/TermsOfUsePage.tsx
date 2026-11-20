@@ -2,7 +2,16 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function TermsOfUsePage() {
   return (
-    <PolicyPage title="Terms of Use" subtitle="The rules for using this application.">
+    <PolicyPage
+      title="Terms of use"
+      subtitle="The rules for using Hidden Gems."
+      summary={[
+        'Using the app means you agree to these terms.',
+        'You own what you post, and you let us show it inside the app.',
+        'No harassment, spam, deliberate misinformation, or snooping on data that isn’t yours.',
+        'Information comes from the community, so double-check before you rely on it.',
+      ]}
+    >
       <h2>Acceptance of terms</h2>
       <p>By creating an account or using this application, you agree to these terms. If you do not agree, please do not use the service.</p>
 

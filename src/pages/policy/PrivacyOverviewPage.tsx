@@ -2,7 +2,15 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function PrivacyOverviewPage() {
   return (
-    <PolicyPage title="Privacy Overview" subtitle="How your information is collected, used, and protected.">
+    <PolicyPage
+      title="Privacy"
+      subtitle="What we collect, who can see it, and the choices you have."
+      summary={[
+        'We store your email, username, display name, and any profile details you choose to add.',
+        'Other members see what you publish, within your privacy settings.',
+        'You can change privacy and notification settings, block people, or delete your account at any time.',
+      ]}
+    >
       <h2>What we collect</h2>
       <p>When you create an account, we store your email address, username, display name, and any optional profile details you choose to share (such as your general area and bio).</p>
 

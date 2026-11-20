@@ -2,7 +2,7 @@ import PolicyPage from '@/components/PolicyPage';
 
 export default function SupportPage() {
   return (
-    <PolicyPage title="Contact & Support" subtitle="How to get help, report problems, or give feedback.">
+    <PolicyPage title="Help & support" subtitle="How to get help, report problems, or give feedback.">
       <h2>Reporting content</h2>
       <p>If you see content that violates our guidelines, use the report button on the gem, comment, collection, or profile. You can include a reason, a description, and optional evidence. Our moderation team reviews every report.</p>
 
