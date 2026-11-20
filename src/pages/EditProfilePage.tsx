@@ -2,9 +2,10 @@ import { useState, type FormEvent, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
-import { PageHeader } from '@/components/Avatar';
+import { Avatar, PageHeader } from '@/components/Avatar';
 import { LoadingSpinner } from '@/components/States';
-import { ArrowLeft, Check } from 'lucide-react';
+import { validateImageFile, uploadAvatar, deleteAvatarByUrl, MAX_AVATAR_SIZE } from '@/lib/upload';
+import { ArrowLeft, Check, Camera, Trash2 } from 'lucide-react';
 
 export default function EditProfilePage() {
   const { profile, refreshProfile } = useAuth();
@@ -17,6 +18,52 @@ export default function EditProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  // Photos save immediately (separately from the text fields), so the
+  // uploaded file and the profile never get out of sync.
+  const savePhoto = async (url: string | null) => {
+    if (!profile) return false;
+    const { error: updErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', profile.id);
+    if (updErr) { setPhotoError(updErr.message); return false; }
+    await refreshProfile();
+    return true;
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !profile || uploading) return;
+    const invalid = validateImageFile(file) ?? (file.size > MAX_AVATAR_SIZE ? 'Profile photos must be 2 MB or smaller.' : null);
+    if (invalid) { setPhotoError(invalid); return; }
+    setPhotoError(null);
+    setUploading(true);
+    try {
+      const previous = profile.avatar_url;
+      const { url } = await uploadAvatar(profile.id, file);
+      if (await savePhoto(url)) {
+        setAvatarUrl(url);
+        await deleteAvatarByUrl(previous);
+      }
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!profile?.avatar_url || uploading) return;
+    setUploading(true);
+    setPhotoError(null);
+    const previous = profile.avatar_url;
+    if (await savePhoto(null)) {
+      setAvatarUrl('');
+      await deleteAvatarByUrl(previous);
+    }
+    setUploading(false);
+  };
 
   useEffect(() => {
     if (profile) {
@@ -40,7 +87,6 @@ export default function EditProfilePage() {
         display_name: displayName.trim(),
         bio: bio.trim() || null,
         home_area: homeArea.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
       })
       .eq('id', profile.id);
     setLoading(false);
@@ -64,6 +110,31 @@ export default function EditProfilePage() {
       <button onClick={() => navigate('/profile')} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><ArrowLeft className="h-4 w-4" /> Profile</button>
       <PageHeader title="Edit profile" subtitle="Update how you appear to the community." />
 
+      <div className="card flex flex-col items-center gap-4 p-6 sm:flex-row">
+        <div className="relative">
+          <Avatar url={avatarUrl || null} name={displayName || profile.display_name} size={88} />
+          {uploading && (
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white"><LoadingSpinner size={22} /></span>
+          )}
+        </div>
+        <div className="text-center sm:text-left">
+          <p className="font-semibold">Profile photo</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">JPG, PNG or WebP, up to 2 MB. Saves right away.</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+            <label className={`btn-primary cursor-pointer ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
+              <Camera className="h-4 w-4" /> {avatarUrl ? 'Change photo' : 'Upload photo'}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handlePhotoSelect} disabled={uploading} />
+            </label>
+            {avatarUrl && (
+              <button type="button" onClick={handleRemovePhoto} disabled={uploading} className="btn-outline">
+                <Trash2 className="h-4 w-4" /> Remove
+              </button>
+            )}
+          </div>
+          {photoError && <p role="alert" className="mt-2 text-sm text-error-600 dark:text-error-400">{photoError}</p>}
+        </div>
+      </div>
+
       <form onSubmit={onSubmit} className="card space-y-5 p-6" noValidate>
         <div>
           <label htmlFor="displayName" className="label">Display name</label>
@@ -78,12 +149,6 @@ export default function EditProfilePage() {
           <label htmlFor="homeArea" className="label">Home area</label>
           <input id="homeArea" className="input" value={homeArea} onChange={(e) => { setHomeArea(e.target.value); markDirty(); }} maxLength={60} />
         </div>
-        <div>
-          <label htmlFor="avatarUrl" className="label">Avatar image URL</label>
-          <input id="avatarUrl" type="url" className="input" placeholder="https://…" value={avatarUrl} onChange={(e) => { setAvatarUrl(e.target.value); markDirty(); }} />
-          <p className="mt-1 text-xs text-stone-400">Paste an image URL. Photo uploads via Supabase Storage will be added in Phase 2.</p>
-        </div>
-
         {error && <div role="alert" className="rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-950/40 dark:text-error-400">{error}</div>}
 
         <div className="flex items-center gap-3">
