@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from '@/lib/router';
 import { EmptyState, ErrorState, SkeletonCard } from '@/components/States';
 import { GemCard, GemArt, CategoryIcon } from '@/components/GemCard';
+import { InstallPrompt } from '@/components/InstallPrompt';
 import type { Category, Community, UserInterest, Gem } from '@/types/database';
 import { Search, Compass as CompassIcon, MapPin, ArrowRight, Heart, Layers, PenLine } from 'lucide-react';
 
@@ -16,6 +17,8 @@ export default function DiscoverPage() {
   const [gems, setGems] = useState<Gem[]>([]);
   const [myDrafts, setMyDrafts] = useState<Gem[]>([]);
   const [picked, setPicked] = useState<Gem[]>([]);
+  const [featuredGem, setFeaturedGem] = useState<{ gem: Gem; note: string | null } | null>(null);
+  const [featuredCommunity, setFeaturedCommunity] = useState<Community | null>(null);
   const [pickedFor, setPickedFor] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -47,6 +50,17 @@ export default function DiscoverPage() {
       setCommunities((communitiesRes.data as Community[] | null) ?? []);
       setGems((gemsRes.data as Gem[] | null) ?? []);
       setMyDrafts((draftsRes.data as Gem[] | null) ?? []);
+
+      // Admin picks. Ignored quietly if the featured table doesn't exist yet.
+      const { data: feats } = await supabase.from('featured_items').select('kind, item_id, note');
+      const fg = (feats as { kind: string; item_id: string; note: string | null }[] | null)?.find((f) => f.kind === 'gem');
+      const fc = (feats as { kind: string; item_id: string; note: string | null }[] | null)?.find((f) => f.kind === 'community');
+      const [fgRes, fcRes] = await Promise.all([
+        fg ? supabase.from('gems').select(GEM_EMBED).eq('id', fg.item_id).eq('status', 'published').maybeSingle() : Promise.resolve({ data: null }),
+        fc ? supabase.from('communities').select('*').eq('id', fc.item_id).eq('is_active', true).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      setFeaturedGem(fgRes.data ? { gem: fgRes.data as Gem, note: fg?.note ?? null } : null);
+      setFeaturedCommunity((fcRes.data as Community | null) ?? null);
 
       // "Picked for you": recent gems in the categories matching the
       // interests chosen during onboarding, excluding the user's own.
@@ -150,6 +164,8 @@ export default function DiscoverPage() {
         </div>
       </div>
 
+      <InstallPrompt />
+
       {/* Drafts nudge */}
       {myDrafts.length > 0 && (
         <section className="rounded-3xl bg-citrine-100 p-4 dark:bg-citrine-500/10 sm:p-5">
@@ -166,6 +182,15 @@ export default function DiscoverPage() {
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Gem of the week (picked by admins) */}
+      {featuredGem && (
+        <section>
+          <SectionHeading title="Gem of the week" />
+          <GemCard gem={featuredGem.gem} featured onOpen={() => navigate(`/gems/${featuredGem.gem.id}`)} />
+          {featuredGem.note && <p className="mt-3 px-1 text-[15px] italic text-stone-600 dark:text-stone-300">“{featuredGem.note}”</p>}
         </section>
       )}
 
@@ -223,11 +248,24 @@ export default function DiscoverPage() {
       )}
 
       {/* Communities */}
-      {communities.length > 0 && (
+      {(communities.length > 0 || featuredCommunity) && (
         <section>
           <SectionHeading title="Communities to join" action="See all" onAction={() => navigate('/communities')} />
+          {featuredCommunity && (
+            <button onClick={() => navigate(`/communities/${featuredCommunity.id}`)} className="group relative mb-4 block h-44 w-full overflow-hidden rounded-4xl text-left shadow-card-hover">
+              {featuredCommunity.cover_image_url
+                ? <img src={featuredCommunity.cover_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                : <GemArt id={featuredCommunity.id} icon="users" className="absolute inset-0 h-full w-full" />}
+              <div className="absolute inset-0 bg-gradient-to-r from-stone-950/80 to-stone-950/10" />
+              <div className="absolute inset-y-0 left-0 flex max-w-md flex-col justify-end p-5 text-white sm:p-7">
+                <span className="badge mb-2 w-fit bg-citrine-400 text-stone-900">Featured community</span>
+                <h3 className="font-display text-2xl font-extrabold leading-tight">{featuredCommunity.name}</h3>
+                {featuredCommunity.description && <p className="mt-1 line-clamp-2 text-sm text-white/85">{featuredCommunity.description}</p>}
+              </div>
+            </button>
+          )}
           <div className="scrollbar-hide -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
-            {communities.map((c) => (
+            {communities.filter((c) => c.id !== featuredCommunity?.id).map((c) => (
               <button key={c.id} onClick={() => navigate(`/communities/${c.id}`)} className="card w-64 shrink-0 snap-start overflow-hidden text-left transition-shadow hover:shadow-card-hover sm:w-auto">
                 <div className="h-24">
                   {c.cover_image_url
@@ -266,6 +304,8 @@ export default function DiscoverPage() {
 }
 
 // Soft tinted chips with matching icon colour, instead of solid saturated blocks
+const GEM_EMBED = '*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)';
+
 const CATEGORY_TINTS = [
   'bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300',
   'bg-accent-100 text-accent-700 dark:bg-accent-500/15 dark:text-accent-300',

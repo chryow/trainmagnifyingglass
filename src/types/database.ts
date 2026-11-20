@@ -110,6 +110,28 @@ export const ONBOARDING_INTERESTS = [
 export type OnboardingInterest = (typeof ONBOARDING_INTERESTS)[number];
 
 export type GemStatus = 'draft' | 'published';
+
+// "Good for" tags on gems (must match the CHECK constraint in migration 0010)
+export const GOOD_FOR_OPTIONS = [
+  { value: 'rainy_days', label: 'Rainy days', emoji: '🌧️' },
+  { value: 'working', label: 'Working', emoji: '💻' },
+  { value: 'dates', label: 'Dates', emoji: '💞' },
+  { value: 'families', label: 'Families', emoji: '👨‍👩‍👧' },
+  { value: 'groups', label: 'Groups', emoji: '👥' },
+  { value: 'solo', label: 'Going solo', emoji: '🧘' },
+  { value: 'pets', label: 'Pets welcome', emoji: '🐾' },
+  { value: 'late_night', label: 'Late night', emoji: '🌙' },
+  { value: 'budget', label: 'On a budget', emoji: '🪙' },
+  { value: 'accessible', label: 'Wheelchair access', emoji: '♿' },
+] as const;
+export type GoodFor = (typeof GOOD_FOR_OPTIONS)[number]['value'];
+
+export const PRICE_LEVELS = [
+  { value: 1, label: 'Free', short: 'Free' },
+  { value: 2, label: 'Cheap', short: 'Rp' },
+  { value: 3, label: 'Moderate', short: 'Rp Rp' },
+  { value: 4, label: 'Pricey', short: 'Rp Rp Rp' },
+] as const;
 export type VerificationStatus = 'new' | 'community_confirmed' | 'may_be_outdated' | 'temporarily_unavailable' | 'permanently_closed' | 'under_review';
 
 export interface Gem {
@@ -126,6 +148,9 @@ export interface Gem {
   lng: number | null;
   status: GemStatus;
   cover_image_url: string | null;
+  opening_hours?: string | null;
+  price_level?: number | null;
+  good_for?: GoodFor[];
   is_hidden: boolean;
   verification_status: VerificationStatus;
   created_at: string;

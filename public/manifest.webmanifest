@@ -1,0 +1,15 @@
+{
+  "name": "Hidden Gems",
+  "short_name": "Hidden Gems",
+  "description": "Find the places everyone else walks past, recommended by people who've been there.",
+  "start_url": "/#/discover",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f6ff",
+  "theme_color": "#b4506f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

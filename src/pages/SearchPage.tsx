@@ -1,162 +1,200 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useNavigate, useRoute } from '@/lib/router';
 import { PageHeader } from '@/components/Avatar';
-import { EmptyState, ErrorState, SkeletonCard } from '@/components/States';
+import { EmptyState, ErrorState, SkeletonCard, LoadingSpinner } from '@/components/States';
+import { GemCard } from '@/components/GemCard';
 import type { Gem, Category } from '@/types/database';
-import { Search, MapPin, Filter, X, Sparkles } from 'lucide-react';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
+
+const PAGE_SIZE = 24;
+const GEM_EMBED = '*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)';
+type Sort = 'relevance' | 'recent' | 'title';
+
+interface Params { query: string; categoryId: string; area: string; sort: Sort }
+
+/**
+ * Ranked, typo-tolerant search via the search_gems() database function.
+ * Falls back to simple text matching if that function isn't installed yet.
+ */
+async function fetchPage(p: Params, page: number): Promise<Gem[]> {
+  const term = p.query.trim();
+  const { data, error } = await supabase
+    .rpc('search_gems', {
+      p_query: term,
+      p_category_id: p.categoryId || null,
+      p_area: p.area.trim() || null,
+      p_sort: p.sort,
+      p_limit: PAGE_SIZE,
+      p_offset: page * PAGE_SIZE,
+    })
+    .select(GEM_EMBED);
+  if (!error) return (data as unknown as Gem[]) ?? [];
+
+  // Function missing (migration 0010 not applied): basic matching instead
+  if (error.code !== 'PGRST202' && !/search_gems/.test(error.message)) throw error;
+  const safe = term.replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
+  let q = supabase.from('gems').select(GEM_EMBED).eq('status', 'published');
+  if (safe) q = q.or(`title.ilike.%${safe}%,place_name.ilike.%${safe}%,description.ilike.%${safe}%,area.ilike.%${safe}%`);
+  if (p.categoryId) q = q.eq('category_id', p.categoryId);
+  if (p.area.trim()) q = q.ilike('area', `%${p.area.trim().replace(/[%*]/g, '')}%`);
+  q = p.sort === 'title' ? q.order('title') : q.order('created_at', { ascending: false });
+  const res = await q.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+  if (res.error) throw res.error;
+  return (res.data as Gem[] | null) ?? [];
+}
 
 export default function SearchPage() {
   const route = useRoute();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const initialQuery = route.params.q ?? '';
 
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(route.params.q ?? '');
+  const [debounced, setDebounced] = useState(query);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [gems, setGems] = useState<Gem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [categoryId, setCategoryId] = useState('');
+  const [area, setArea] = useState('');
+  const [sort, setSort] = useState<Sort>('relevance');
   const [showFilters, setShowFilters] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [areaFilter, setAreaFilter] = useState<string>('');
-  const [sort, setSort] = useState<'recent' | 'title'>('recent');
+
+  const [gems, setGems] = useState<Gem[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(false);
+  const requestId = useRef(0);
+  const [retry, setRetry] = useState(0);
+
+  // Follow ?q= when arriving from another page's search box
+  useEffect(() => { if (route.params.q !== undefined) setQuery(route.params.q); }, [route.params.q]);
+
+  // Search 300 ms after typing stops instead of on every keystroke
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(query), 300);
+    return () => window.clearTimeout(t);
+  }, [query]);
 
   useEffect(() => {
-    supabase.from('categories').select('*').order('sort_order').then(({ data }) => {
-      setCategories((data as Category[] | null) ?? []);
-    });
+    supabase.from('categories').select('*').order('sort_order').then(({ data }) => setCategories((data as Category[] | null) ?? []));
   }, []);
 
-  const search = useCallback(async () => {
+  useEffect(() => {
     if (!profile) return;
+    const id = ++requestId.current;
     setLoading(true);
     setError(false);
+    fetchPage({ query: debounced, categoryId, area, sort }, 0)
+      .then((rows) => {
+        if (id !== requestId.current) return; // a newer search has started
+        setGems(rows);
+        setPage(0);
+        setHasMore(rows.length === PAGE_SIZE);
+      })
+      .catch(() => id === requestId.current && setError(true))
+      .finally(() => id === requestId.current && setLoading(false));
+  }, [profile, debounced, categoryId, area, sort, retry]);
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
     try {
-      let q = supabase
-        .from('gems')
-        .select('*, author:profiles(id, username, display_name, avatar_url), community:communities(id, name, visibility), category:categories(id, name, slug, icon)')
-        .eq('status', 'published');
-
-      // Commas, brackets and quotes are syntax in PostgREST's or() filter;
-      // replace them so queries like "cafe, jakarta" don't error.
-      const term = query.trim().replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (term) {
-        q = q.or(`title.ilike.%${term}%,place_name.ilike.%${term}%,description.ilike.%${term}%,area.ilike.%${term}%`);
-      }
-      if (categoryFilter) {
-        q = q.eq('category_id', categoryFilter);
-      }
-      if (areaFilter.trim()) {
-        q = q.ilike('area', `%${areaFilter.trim().replace(/[%*]/g, '')}%`);
-      }
-
-      if (sort === 'recent') q = q.order('created_at', { ascending: false });
-      else q = q.order('title', { ascending: true });
-
-      const { data, error: sErr } = await q.limit(50);
-      if (sErr) { setError(true); return; }
-      setGems((data as Gem[] | null) ?? []);
+      const rows = await fetchPage({ query: debounced, categoryId, area, sort }, page + 1);
+      setGems((g) => [...g, ...rows.filter((r) => !g.some((x) => x.id === r.id))]);
+      setPage((n) => n + 1);
+      setHasMore(rows.length === PAGE_SIZE);
     } catch {
       setError(true);
     } finally {
-      setLoading(false);
+      setLoadingMore(false);
     }
-  }, [profile, query, categoryFilter, areaFilter, sort]);
+  };
 
-  useEffect(() => { search(); }, [search]);
-
-  const hasFilters = !!categoryFilter || !!areaFilter.trim();
-  const clearFilters = () => { setCategoryFilter(''); setAreaFilter(''); };
+  const activeFilters = [categoryId, area.trim()].filter(Boolean).length;
+  const clearFilters = () => { setCategoryId(''); setArea(''); };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Search" subtitle="Find hidden gems across all your communities." />
+    <div className="space-y-5">
+      <PageHeader title="Search" subtitle="Typos are fine: “kopi kemamg” still finds Kopi Kemang." />
 
-      {/* Search bar */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+        <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
         <input
           type="search"
-          className="input pl-11"
-          placeholder="Search by name, place, or area…"
+          autoFocus={!route.params.q}
+          className="input h-14 rounded-3xl bg-white pl-12 text-base shadow-card dark:bg-stone-900"
+          placeholder="Places, areas, cafés, viewpoints…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') search(); }}
+          aria-label="Search gems"
         />
       </div>
 
-      {/* Filter toggle */}
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => setShowFilters((s) => !s)} className="btn-outline">
-          <Filter className="h-4 w-4" /> Filters
-          {hasFilters && <span className="ml-1 rounded-full bg-primary-600 px-1.5 text-[10px] text-white">{[categoryFilter, areaFilter].filter(Boolean).length}</span>}
+        <button onClick={() => setShowFilters((s) => !s)} className="btn-outline py-2" aria-expanded={showFilters}>
+          <SlidersHorizontal className="h-4 w-4" /> Filters
+          {activeFilters > 0 && <span className="rounded-full bg-primary-600 px-1.5 text-[11px] text-white">{activeFilters}</span>}
         </button>
-        {hasFilters && <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400"><X className="h-3.5 w-3.5" /> Clear</button>}
-        <div className="ml-auto flex items-center gap-2">
-          <label className="text-sm text-stone-500 dark:text-stone-400">Sort:</label>
-          <select className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-900" value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'title')}>
-            <option value="recent">Most recent</option>
-            <option value="title">A–Z</option>
-          </select>
+        {activeFilters > 0 && (
+          <button onClick={clearFilters} className="btn-ghost py-2 text-stone-500"><X className="h-4 w-4" /> Clear</button>
+        )}
+        <div className="ml-auto flex rounded-full bg-stone-100 p-1 dark:bg-stone-800" role="radiogroup" aria-label="Sort results">
+          {([['relevance', 'Best match'], ['recent', 'Newest'], ['title', 'A–Z']] as const).map(([v, label]) => (
+            <button
+              key={v}
+              role="radio"
+              aria-checked={sort === v}
+              onClick={() => setSort(v)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm ${sort === v ? 'bg-white text-stone-900 shadow-card dark:bg-stone-900 dark:text-white' : 'text-stone-500'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Filter panel */}
       {showFilters && (
-        <div className="card space-y-4 p-5">
+        <div className="card grid gap-4 p-5 sm:grid-cols-2">
           <div>
-            <label className="label">Category</label>
-            <select className="input" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+            <label htmlFor="search-category" className="label">Category</label>
+            <select id="search-category" className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
               <option value="">All categories</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Area</label>
-            <input className="input" placeholder="e.g. Kemang, Bali…" value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} />
+            <label htmlFor="search-area" className="label">Area</label>
+            <input id="search-area" className="input" placeholder="e.g. Kemang, Ubud" value={area} onChange={(e) => setArea(e.target.value)} />
           </div>
         </div>
       )}
 
-      {/* Results */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2"><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
       ) : error ? (
-        <ErrorState description="Search failed. Please try again." onRetry={search} />
+        <ErrorState description="Search didn't go through. Check your connection and try again." onRetry={() => setRetry((n) => n + 1)} />
       ) : gems.length === 0 ? (
         <EmptyState
           icon={<Search className="h-6 w-6" />}
-          title="No gems found"
-          description={query || hasFilters ? "Try a different search or adjust your filters." : "Published gems will appear here once people start sharing."}
-          action={!query && !hasFilters ? <button onClick={() => navigate('/gems/new')} className="btn-primary">Share a gem</button> : undefined}
+          title={debounced.trim() || activeFilters ? 'No gems match that' : 'Nothing shared yet'}
+          description={debounced.trim() || activeFilters ? 'Try fewer words, a nearby area, or clearing the filters.' : 'Published gems will show up here.'}
+          action={debounced.trim() || activeFilters
+            ? <button onClick={() => { setQuery(''); clearFilters(); }} className="btn-outline">Clear search</button>
+            : <button onClick={() => navigate('/gems/new')} className="btn-primary">Add a gem</button>}
         />
       ) : (
         <>
-          <p className="text-sm text-stone-500 dark:text-stone-400">{gems.length} result{gems.length !== 1 ? 's' : ''}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {gems.map((g) => (
-              <button key={g.id} onClick={() => navigate(`/gems/${g.id}`)} className="card overflow-hidden text-left transition-shadow hover:shadow-card-hover">
-                {g.cover_image_url ? (
-                  <img src={g.cover_image_url} alt={g.title} className="h-40 w-full object-cover" />
-                ) : (
-                  <div className="flex h-40 items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30">
-                    <Sparkles className="h-8 w-8 text-primary-400" />
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="mb-1.5 flex items-center gap-2">
-                    {g.category && <span className="badge bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">{g.category.name}</span>}
-                    <span className="text-xs text-stone-400">{g.community?.name}</span>
-                  </div>
-                  <h3 className="font-display text-base font-semibold">{g.title}</h3>
-                  <p className="mt-1 flex items-center gap-1 text-sm text-stone-500 dark:text-stone-400"><MapPin className="h-3.5 w-3.5" /> {g.place_name}{g.area ? `, ${g.area}` : ''}</p>
-                  {g.description && <p className="mt-1.5 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">{g.description}</p>}
-                </div>
-              </button>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {gems.map((g) => <GemCard key={g.id} gem={g} onOpen={() => navigate(`/gems/${g.id}`)} />)}
           </div>
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button onClick={loadMore} disabled={loadingMore} className="btn-outline">
+                {loadingMore ? <LoadingSpinner size={16} /> : 'Load more'}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

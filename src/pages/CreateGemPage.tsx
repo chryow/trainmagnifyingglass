@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/Avatar';
 import { LoadingSpinner, EmptyState } from '@/components/States';
 import { validateImageFile, uploadGemImage } from '@/lib/upload';
 import { LocationPicker, type Coords } from '@/components/Map';
+import { GemDetailsFields, detailsPayload, type DetailsValue } from '@/components/GemDetailsFields';
 import type { Community, Category, GemStatus } from '@/types/database';
 import { ArrowLeft, Save, Send, ImagePlus, X, Users } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export default function CreateGemPage() {
   const [area, setArea] = useState('');
   const [address, setAddress] = useState('');
   const [coords, setCoords] = useState<Coords | null>(null);
+  const [details, setDetails] = useState<DetailsValue>({ openingHours: '', priceLevel: null, goodFor: [] });
   const [description, setDescription] = useState('');
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -85,6 +87,7 @@ export default function CreateGemPage() {
         address: address.trim() || null,
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
+        ...detailsPayload(details, false),
         description: description.trim() || null,
         cover_image_url: null,
         status: publishStatus,
@@ -192,6 +195,8 @@ export default function CreateGemPage() {
             <input id="address" className="input" placeholder="Street address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} />
           </div>
         </div>
+
+        <GemDetailsFields value={details} onChange={setDetails} />
 
         <div>
           <label className="label">Pin it on the map <span className="text-stone-400">(optional)</span></label>
